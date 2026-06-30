@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Calendar, Star, PenLine, CheckCircle, Sparkles, Camera, Bell } from 'lucide-react'
 import Card from '@/components/Card'
-import SignOutButton from '@/components/SignOutButton'
 
 interface Props {
   userEmail: string
@@ -81,25 +80,22 @@ export default function HomeClient({ userName, quote, nextVisit, todayCheckin, l
           <p className="text-sm" style={{ color: '#B08585' }}>{greeting},</p>
           <h1 className="text-2xl font-bold capitalize" style={{ color: '#2D1B1B' }}>{userName} ♡</h1>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Ping button — sends a little nudge email to your partner */}
-          <button
-            onClick={sendPing}
-            disabled={pingState === 'sending' || pingState === 'maxed'}
-            title={pingState === 'maxed' ? `You've already pinged ${PING_DAILY_LIMIT} times today` : `Ping ${partnerName}`}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
-            style={{
-              background: pingState === 'sent' ? '#E0F7F5' : '#FFF0F0',
-              opacity: pingState === 'maxed' ? 0.4 : 1,
-            }}
-          >
-            <Bell
-              size={16}
-              style={{ color: pingState === 'sent' ? '#2BA99C' : '#FF6B6B' }}
-            />
-          </button>
-          <SignOutButton />
-        </div>
+        {/* Ping button — sends a little nudge email to your partner */}
+        <button
+          onClick={sendPing}
+          disabled={pingState === 'sending' || pingState === 'maxed'}
+          title={pingState === 'maxed' ? `You've already pinged ${PING_DAILY_LIMIT} times today` : `Ping ${partnerName}`}
+          className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+          style={{
+            background: pingState === 'sent' ? '#E0F7F5' : '#FFF0F0',
+            opacity: pingState === 'maxed' ? 0.4 : 1,
+          }}
+        >
+          <Bell
+            size={16}
+            style={{ color: pingState === 'sent' ? '#2BA99C' : '#FF6B6B' }}
+          />
+        </button>
       </div>
 
       {/* Ping feedback — shown briefly after tapping */}
