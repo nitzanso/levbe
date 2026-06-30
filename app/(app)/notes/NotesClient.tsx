@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Pen, Type } from 'lucide-react'
+import { nickname, partnerNick } from '@/lib/nicknames'
 
 interface Note {
   id: string
@@ -31,8 +32,11 @@ function timeAgo(dateStr: string) {
 }
 
 export default function NotesClient({ userEmail, userName, notes }: Props) {
+  const pNick = partnerNick(userName)
+  const myNick = nickname(userName)
   const [composing, setComposing] = useState<'note' | 'drawing' | null>(null)
   const [noteText, setNoteText] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [isPending, startTransition] = useTransition()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
@@ -97,6 +101,8 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
       setNoteText('')
       setComposing(null)
       router.refresh()
+      setSuccessMsg(`On its way to ${pNick} ✏️`)
+      setTimeout(() => setSuccessMsg(''), 3000)
       if (data) {
         fetch('/api/send-email', {
           method: 'POST',
@@ -119,6 +125,8 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
       clearCanvas()
       setComposing(null)
       router.refresh()
+      setSuccessMsg(`On its way to ${pNick} ✏️`)
+      setTimeout(() => setSuccessMsg(''), 3000)
       if (data) {
         fetch('/api/send-email', {
           method: 'POST',
@@ -129,13 +137,18 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
     })
   }
 
-  const displayName = userName || userEmail.split('@')[0]
-
   return (
     <div className="pb-6">
+      {successMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-sm font-medium text-white"
+          style={{ background: '#FF6B6B' }}>
+          {successMsg}
+        </div>
+      )}
+
       <PageHeader
         title="Notes & doodles"
-        subtitle="A little something for each other"
+        subtitle={`Leave ${pNick} a little something`}
         action={
           <button
             onClick={() => setComposing('note')}
@@ -177,7 +190,7 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
               <textarea
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
-                placeholder="Write something for them…"
+                placeholder={`Write something for ${pNick}…`}
                 className="w-full h-48 text-lg resize-none outline-none rounded-2xl p-4 font-handwriting"
                 style={{ background: 'white', color: '#2D1B1B', border: '2px solid #FFE5E5' }}
                 autoFocus
@@ -229,8 +242,10 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
         {notes.length === 0 && (
           <div className="text-center py-16">
             <p className="text-4xl mb-3">✏️</p>
-            <p className="text-base font-medium" style={{ color: '#7A5C5C' }}>Nothing yet</p>
-            <p className="text-sm mt-1" style={{ color: '#B08585' }}>Leave the first note or doodle ♡</p>
+            <p className="text-base font-medium" style={{ color: '#7A5C5C' }}>Nothing here yet</p>
+            <p className="text-sm mt-1" style={{ color: '#B08585' }}>
+              Send {pNick} a little drawing — even a wonky heart counts 🎨
+            </p>
           </div>
         )}
 
@@ -256,7 +271,7 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
                 )}
                 <div className="px-3 pb-2 flex items-center justify-between">
                   <span className="text-[10px]" style={{ color: '#B08585' }}>
-                    {isMe ? displayName : 'Love'}
+                    {isMe ? myNick : pNick}
                   </span>
                   <span className="text-[10px]" style={{ color: '#B08585' }}>{timeAgo(note.created_at)}</span>
                 </div>

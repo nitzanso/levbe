@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, ChevronDown, ChevronRight, Check } from 'lucide-react'
 import type { MilestoneTrack, MilestoneStatus } from '@/lib/types'
+import { nickname, partnerNick } from '@/lib/nicknames'
 
 interface Milestone {
   id: string
@@ -20,6 +21,7 @@ interface Milestone {
 
 interface Props {
   userEmail: string
+  userName: string
   milestones: Milestone[]
 }
 
@@ -37,9 +39,11 @@ const statusLabel: Record<MilestoneStatus, string> = {
   done: 'Done',
 }
 
-export default function MilestonesClient({ userEmail, milestones }: Props) {
+export default function MilestonesClient({ userEmail, userName, milestones }: Props) {
+  const myNick = nickname(userName)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [adding, setAdding] = useState(false)
+  const [successMsg, setSuccessMsg] = useState('')
   const [form, setForm] = useState({ track: 'relationship' as MilestoneTrack, title: '', definition_of_done: '', target_date: '' })
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
@@ -78,6 +82,10 @@ export default function MilestonesClient({ userEmail, milestones }: Props) {
         status: next,
         completed_at: next === 'done' ? new Date().toISOString() : null,
       }).eq('id', milestone.id)
+      if (next === 'done') {
+        setSuccessMsg(`Look at you go, ${myNick} 🎉`)
+        setTimeout(() => setSuccessMsg(''), 3000)
+      }
       router.refresh()
     })
   }
@@ -86,6 +94,14 @@ export default function MilestonesClient({ userEmail, milestones }: Props) {
 
   return (
     <div className="pb-6">
+      {successMsg && (
+        <div
+          className="fixed top-4 left-1/2 z-50 px-5 py-3 rounded-2xl text-sm font-semibold text-white shadow-lg"
+          style={{ transform: 'translateX(-50%)', background: '#FFD93D', color: '#2D1B1B' }}
+        >
+          {successMsg}
+        </div>
+      )}
       <PageHeader
         title="Milestones"
         subtitle="The road ahead, together"
@@ -154,7 +170,7 @@ export default function MilestonesClient({ userEmail, milestones }: Props) {
                 className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
                 style={{ background: '#FF6B6B' }}
               >
-                {isPending ? 'Adding…' : 'Add'}
+                {isPending ? 'Adding…' : 'Add milestone'}
               </button>
             </div>
           </div>
@@ -188,7 +204,7 @@ export default function MilestonesClient({ userEmail, milestones }: Props) {
               {!isCollapsed && (
                 <div className="divide-y" style={{ borderColor: '#F5EDE8' }}>
                   {items.length === 0 && (
-                    <p className="px-4 py-3 text-sm" style={{ color: '#B08585' }}>No milestones yet — tap + to add one</p>
+                    <p className="px-4 py-3 text-sm" style={{ color: '#B08585' }}>Nothing here yet — add your first milestone ✨</p>
                   )}
                   {items.map(m => (
                     <div key={m.id} className="px-4 py-3 flex items-start gap-3">
