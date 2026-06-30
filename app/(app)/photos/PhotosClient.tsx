@@ -494,22 +494,31 @@ export default function PhotosClient({
               </button>
             </div>
           ) : (
-            /* Step 2: revealed photo */
-            <div className="fixed inset-0 flex flex-col" style={{ animation: 'fadeIn 0.5s ease-in' }}>
+            /* Step 2: revealed photo — scrollable so full image is always visible */
+            <div className="fixed inset-0 overflow-y-auto" style={{ background: 'rgba(20,10,10,0.97)', animation: 'fadeIn 0.5s ease-in' }}>
+              {/* Close button stays fixed regardless of scroll */}
               <button
                 onClick={closeReveal}
-                className="absolute top-14 right-5 z-10 w-9 h-9 rounded-full flex items-center justify-center"
+                className="fixed top-14 right-5 z-10 w-9 h-9 rounded-full flex items-center justify-center"
                 style={{ background: 'rgba(0,0,0,0.5)' }}
               >
                 <X size={18} color="white" />
               </button>
 
+              {/* Spacer so image doesn't start behind the close button */}
+              <div className="h-16" />
+
+              {/* Full image — width 100%, height auto, no cropping */}
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={photoUrl(revealedData.image_path)}
                 alt={revealedData.caption ?? 'photo'}
-                className="flex-1 w-full object-contain"
-                style={{ imageOrientation: 'from-image' } as React.CSSProperties}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  height: 'auto',
+                  imageOrientation: 'from-image',
+                } as React.CSSProperties}
               />
 
               <div className="px-6 py-6" style={{ background: 'rgba(0,0,0,0.8)' }}>
@@ -533,21 +542,29 @@ export default function PhotosClient({
 
       {/* ─── Photo lightbox ─────────────────────────────────────────── */}
       {lightboxPhoto && (
-        <div className="fixed inset-0 z-50 flex flex-col" style={{ background: 'rgba(20,10,10,0.97)' }}>
+        <div className="fixed inset-0 z-50 overflow-y-auto" style={{ background: 'rgba(20,10,10,0.97)' }}>
+          {/* Close button stays fixed regardless of scroll */}
           <button
             onClick={() => setLightboxPhoto(null)}
-            className="absolute top-14 right-5 z-10 w-9 h-9 rounded-full flex items-center justify-center"
+            className="fixed top-14 right-5 z-10 w-9 h-9 rounded-full flex items-center justify-center"
             style={{ background: 'rgba(0,0,0,0.5)' }}
           >
             <X size={18} color="white" />
           </button>
 
+          <div className="h-16" />
+
+          {/* Full image — width 100%, height auto, no cropping */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={photoUrl(lightboxPhoto.image_path)}
             alt={lightboxPhoto.caption ?? 'photo'}
-            className="flex-1 w-full object-contain"
-            style={{ imageOrientation: 'from-image' } as React.CSSProperties}
+            style={{
+              display: 'block',
+              width: '100%',
+              height: 'auto',
+              imageOrientation: 'from-image',
+            } as React.CSSProperties}
           />
 
           <div className="px-6 py-6" style={{ background: 'rgba(0,0,0,0.8)' }}>
