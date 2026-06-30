@@ -187,6 +187,7 @@ export default function SideNav({ pendingPhotos = 0 }: { pendingPhotos?: number 
           background: SIDEBAR_BG,
           borderColor: BORDER_COLOR,
           transition: 'width 280ms ease, min-width 280ms ease',
+          zIndex: 20,
         }}
       >
         {/* Expand button — floats at the right edge when collapsed */}
