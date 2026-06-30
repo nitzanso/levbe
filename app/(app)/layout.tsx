@@ -8,6 +8,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
+  // Update last_seen_at so the daily nudge cron knows who's been active today
+  supabase.from('users').update({ last_seen_at: new Date().toISOString() }).eq('id', user.id)
+
   const { count: pendingPhotos } = await supabase
     .from('photos')
     .select('*', { count: 'exact', head: true })

@@ -80,6 +80,16 @@ export default async function HomePage() {
   const partnerProfile = allProfiles?.find(p => p.email && p.email !== user!.email)
   const partnerName = partnerProfile?.name ?? 'your love'
 
+  // Count how many pings the current user has sent today (for the rate-limit display)
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const { count: todayPingCount } = await supabase
+    .from('notification_log')
+    .select('*', { count: 'exact', head: true })
+    .eq('sender_email', user!.email)
+    .eq('type', 'ping')
+    .gte('sent_at', todayStart.toISOString())
+
   return (
     <HomeClient
       userEmail={user!.email ?? ''}
@@ -92,6 +102,7 @@ export default async function HomePage() {
       weekMoment={weekMoment}
       pendingPhotoCount={pendingPhotos?.length ?? 0}
       partnerName={partnerName}
+      todayPingCount={todayPingCount ?? 0}
     />
   )
 }

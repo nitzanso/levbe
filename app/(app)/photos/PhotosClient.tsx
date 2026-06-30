@@ -173,6 +173,13 @@ export default function PhotosClient({
     setMyPhotos(prev => [data, ...prev])
     setUploading(false)
     resetUpload()
+
+    // Notify partner by email (fire-and-forget — don't block the UI)
+    fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'activity', activityType: 'photo', relatedEntity: `photo:${data.id}` }),
+    }).catch(() => {})
   }
 
   // ─── Reveal handler ──────────────────────────────────────────────────────

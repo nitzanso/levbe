@@ -89,14 +89,21 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
   async function saveNote() {
     if (!noteText.trim()) return
     startTransition(async () => {
-      await supabase.from('notes_and_doodles').insert({
+      const { data } = await supabase.from('notes_and_doodles').insert({
         author: userEmail,
         type: 'note',
         content: noteText.trim(),
-      })
+      }).select().single()
       setNoteText('')
       setComposing(null)
       router.refresh()
+      if (data) {
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'activity', activityType: 'note', noteType: 'note', relatedEntity: `note:${data.id}` }),
+        }).catch(() => {})
+      }
     })
   }
 
@@ -104,14 +111,21 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
     const canvas = canvasRef.current!
     const content = canvas.toDataURL('image/png')
     startTransition(async () => {
-      await supabase.from('notes_and_doodles').insert({
+      const { data } = await supabase.from('notes_and_doodles').insert({
         author: userEmail,
         type: 'drawing',
         content,
-      })
+      }).select().single()
       clearCanvas()
       setComposing(null)
       router.refresh()
+      if (data) {
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'activity', activityType: 'note', noteType: 'drawing', relatedEntity: `note:${data.id}` }),
+        }).catch(() => {})
+      }
     })
   }
 

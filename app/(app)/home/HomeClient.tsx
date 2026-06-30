@@ -1,7 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Calendar, Star, PenLine, CheckCircle, Sparkles, Camera } from 'lucide-react'
+import { Calendar, Star, PenLine, CheckCircle, Sparkles, Camera, Bell } from 'lucide-react'
 import Card from '@/components/Card'
 import SignOutButton from '@/components/SignOutButton'
 
@@ -16,6 +17,7 @@ interface Props {
   weekMoment: { idea_text: string; confirmed: boolean } | null
   pendingPhotoCount: number
   partnerName: string
+  todayPingCount: number
 }
 
 const moodEmoji = ['', '😔', '😕', '😐', '🙂', '😊']
@@ -41,13 +43,35 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-export default function HomeClient({ userName, quote, nextVisit, todayCheckin, latestNote, achievements, weekMoment, pendingPhotoCount, partnerName }: Props) {
+const PING_DAILY_LIMIT = 3
+
+export default function HomeClient({ userName, quote, nextVisit, todayCheckin, latestNote, achievements, weekMoment, pendingPhotoCount, partnerName, todayPingCount }: Props) {
+  const [pingState, setPingState] = useState<'idle' | 'sending' | 'sent' | 'maxed'>(
+    todayPingCount >= PING_DAILY_LIMIT ? 'maxed' : 'idle'
+  )
+
   const greeting = (() => {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
     if (h < 18) return 'Good afternoon'
     return 'Good evening'
   })()
+
+  async function sendPing() {
+    if (pingState !== 'idle') return
+    setPingState('sending')
+    try {
+      await fetch('/api/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'ping' }),
+      })
+    } catch {
+      // silent
+    }
+    setPingState('sent')
+    setTimeout(() => setPingState('idle'), 3000)
+  }
 
   return (
     <div className="px-4 pb-6">
@@ -57,8 +81,38 @@ export default function HomeClient({ userName, quote, nextVisit, todayCheckin, l
           <p className="text-sm" style={{ color: '#B08585' }}>{greeting},</p>
           <h1 className="text-2xl font-bold capitalize" style={{ color: '#2D1B1B' }}>{userName} ♡</h1>
         </div>
-        <SignOutButton />
+        <div className="flex items-center gap-2">
+          {/* Ping button — sends a little nudge email to your partner */}
+          <button
+            onClick={sendPing}
+            disabled={pingState === 'sending' || pingState === 'maxed'}
+            title={pingState === 'maxed' ? `You've already pinged ${PING_DAILY_LIMIT} times today` : `Ping ${partnerName}`}
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
+            style={{
+              background: pingState === 'sent' ? '#E0F7F5' : '#FFF0F0',
+              opacity: pingState === 'maxed' ? 0.4 : 1,
+            }}
+          >
+            <Bell
+              size={16}
+              style={{ color: pingState === 'sent' ? '#2BA99C' : '#FF6B6B' }}
+            />
+          </button>
+          <SignOutButton />
+        </div>
       </div>
+
+      {/* Ping feedback — shown briefly after tapping */}
+      {pingState === 'sent' && (
+        <div className="mt-1 text-center text-xs" style={{ color: '#2BA99C' }}>
+          ping sent! 💌
+        </div>
+      )}
+      {pingState === 'maxed' && (
+        <div className="mt-1 text-center text-xs" style={{ color: '#B08585' }}>
+          you've already pinged {PING_DAILY_LIMIT}× today — they know you're thinking of them 🤍
+        </div>
+      )}
 
       {/* Daily quote */}
       {quote ? (

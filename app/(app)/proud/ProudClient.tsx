@@ -40,14 +40,21 @@ export default function ProudClient({ userEmail, achievements }: Props) {
   async function addAchievement() {
     if (!text.trim()) return
     startTransition(async () => {
-      await supabase.from('achievements').insert({
+      const { data } = await supabase.from('achievements').insert({
         author: userEmail,
         text: text.trim(),
         partner_reacted: false,
-      })
+      }).select().single()
       setText('')
       setAdding(false)
       router.refresh()
+      if (data) {
+        fetch('/api/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'activity', activityType: 'achievement', relatedEntity: `achievement:${data.id}` }),
+        }).catch(() => {})
+      }
     })
   }
 
