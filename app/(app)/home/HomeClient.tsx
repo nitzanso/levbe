@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Calendar, Star, PenLine, CheckCircle, Sparkles } from 'lucide-react'
+import { Calendar, Star, PenLine, CheckCircle, Sparkles, Camera } from 'lucide-react'
 import Card from '@/components/Card'
 import SignOutButton from '@/components/SignOutButton'
 
@@ -14,6 +14,8 @@ interface Props {
   latestNote: { type: string; content: string; author: string; created_at: string } | null
   achievements: { text: string; author: string; created_at: string }[]
   weekMoment: { idea_text: string; confirmed: boolean } | null
+  pendingPhotoCount: number
+  partnerName: string
 }
 
 const moodEmoji = ['', '😔', '😕', '😐', '🙂', '😊']
@@ -39,7 +41,7 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-export default function HomeClient({ userName, quote, nextVisit, todayCheckin, latestNote, achievements, weekMoment }: Props) {
+export default function HomeClient({ userName, quote, nextVisit, todayCheckin, latestNote, achievements, weekMoment, pendingPhotoCount, partnerName }: Props) {
   const greeting = (() => {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
@@ -68,6 +70,25 @@ export default function HomeClient({ userName, quote, nextVisit, todayCheckin, l
       ) : (
         <div className="mt-4 rounded-3xl p-5" style={{ background: 'linear-gradient(135deg, #FFE5E5, #FFF8D6)' }}>
           <p className="text-base" style={{ color: '#B08585' }}>Add your first quote in the database to see it here ♡</p>
+        </div>
+      )}
+
+      {/* Pending photo from partner */}
+      {pendingPhotoCount > 0 && (
+        <div className="mt-4">
+          <Link href="/photos">
+            <div className="rounded-3xl px-5 py-4 flex items-center gap-4"
+              style={{ background: 'linear-gradient(135deg, #FFF8D6, #FFE5E5)' }}>
+              <span className="text-3xl flex-shrink-0">📸</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold" style={{ color: '#2D1B1B' }}>
+                  {partnerName} sent you {pendingPhotoCount === 1 ? 'a photo' : `${pendingPhotoCount} photos`}
+                </p>
+                <p className="text-xs mt-0.5" style={{ color: '#B08585' }}>Tap to open it ✨</p>
+              </div>
+              <Camera size={18} style={{ color: '#FF6B6B', flexShrink: 0 }} />
+            </div>
+          </Link>
         </div>
       )}
 

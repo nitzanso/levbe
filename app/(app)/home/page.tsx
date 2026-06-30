@@ -66,6 +66,20 @@ export default async function HomePage() {
     .eq('id', user!.id)
     .maybeSingle()
 
+  // Fetch pending photo from partner (just the count + latest tag, not the image)
+  const { data: pendingPhotos } = await supabase
+    .from('photos')
+    .select('id, tag, created_at')
+    .neq('author', user!.email)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  // Get partner name for the pending photo card
+  const { data: allProfiles } = await supabase.from('users').select('name, email')
+  const partnerProfile = allProfiles?.find(p => p.email && p.email !== user!.email)
+  const partnerName = partnerProfile?.name ?? 'your love'
+
   return (
     <HomeClient
       userEmail={user!.email ?? ''}
@@ -76,6 +90,8 @@ export default async function HomePage() {
       latestNote={latestNote}
       achievements={achievements ?? []}
       weekMoment={weekMoment}
+      pendingPhotoCount={pendingPhotos?.length ?? 0}
+      partnerName={partnerName}
     />
   )
 }

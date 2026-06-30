@@ -9,7 +9,7 @@ Follow these steps in order. Each step should take 2–5 minutes.
 1. Go to **supabase.com** and sign in (or create a free account)
 2. Click **"New project"**
 3. Choose a name — e.g. `levbe`
-4. Set a strong database password (write it down)
+4. Set a strong database password (Levbe2026!!)
 5. Choose region: **Europe (Frankfurt)** — closest to you both
 6. Click **"Create new project"** — wait ~1 minute for it to spin up
 
@@ -20,8 +20,8 @@ Follow these steps in order. Each step should take 2–5 minutes.
 1. Inside your new project, click **Settings** (gear icon, bottom left)
 2. Click **API** in the settings menu
 3. You need two values:
-   - **Project URL** — looks like `https://abcxyz.supabase.co`
-   - **anon public** key — a long string starting with `eyJ...`
+   - **Project URL** — looks like `https://iuotqrtctgnpgsacktdm.supabase.co`
+   - **anon public** key — a long string starting with `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1b3RxcnRjdGducGdzYWNrdGRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4Mjg1NTAsImV4cCI6MjA5ODQwNDU1MH0.qgQHVfLLhhpdnrBpfyKlDebRTJAa3VUde3DwGKYCMO0`
 
 ---
 
@@ -111,9 +111,21 @@ Log in with Nitzan's credentials — you should see the Home screen.
 5. Before deploying, click **"Environment Variables"** and add:
    - `NEXT_PUBLIC_SUPABASE_URL` = your Supabase URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your Supabase anon key
+   - `NEXT_PUBLIC_SITE_URL` = your Vercel URL (e.g. `https://levbe-abc123.vercel.app`) — needed for password reset emails to link back to the right place. If you don't know it yet, deploy first and then add it from the Vercel dashboard.
 6. Click **"Deploy"**
 
 Vercel will give you a URL like `levbe-abc123.vercel.app` — that's your app link. Share it with Jens.
+
+### After deploying — one Supabase dashboard setting
+
+For the "Forgot password?" email links to work, Supabase needs to know your app's URL:
+
+1. In Supabase → **Authentication** → **URL Configuration**
+2. Under **"Redirect URLs"**, click **"Add URL"**
+3. Add: `https://your-vercel-url.vercel.app/reset-password`
+4. Click **"Save"**
+
+Without this step, users who click the reset link in their email will get a "redirect URI mismatch" error instead of the password form.
 
 ---
 
