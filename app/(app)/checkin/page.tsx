@@ -22,6 +22,7 @@ export default async function CheckinPage() {
 
   return (
     <CheckinClient
+      userId={user!.id}
       userEmail={user!.email ?? ''}
       userName={profile?.name ?? 'you'}
       myCheckin={myCheckin}

@@ -40,6 +40,7 @@ export default async function PhotosPage() {
 
   return (
     <PhotosClient
+      userId={user!.id}
       userEmail={userEmail}
       userName={profile?.name ?? userEmail.split('@')[0]}
       partnerName={partnerName}

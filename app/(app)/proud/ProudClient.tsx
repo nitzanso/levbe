@@ -4,7 +4,10 @@ import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, Star, Heart } from 'lucide-react'
+import { Plus, Star } from 'lucide-react'
+import { nickname, partnerNick } from '@/lib/nicknames'
+import ReactionsBar from '@/components/ReactionsBar'
+import CommentThread from '@/components/CommentThread'
 
 interface Achievement {
   id: string
@@ -15,6 +18,7 @@ interface Achievement {
 }
 
 interface Props {
+  userId: string
   userEmail: string
   userName: string
   achievements: Achievement[]
@@ -30,9 +34,12 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(days / 30)} months ago`
 }
 
-export default function ProudClient({ userEmail, achievements }: Props) {
+export default function ProudClient({ userId, userEmail, userName, achievements }: Props) {
+  const pNick = partnerNick(userName)
+  const myNick = nickname(userName)
   const [adding, setAdding] = useState(false)
   const [text, setText] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const supabase = createClient()
@@ -48,6 +55,8 @@ export default function ProudClient({ userEmail, achievements }: Props) {
       setText('')
       setAdding(false)
       router.refresh()
+      setSuccessMsg(`${pNick} is going to be so proud of you 🌟`)
+      setTimeout(() => setSuccessMsg(''), 3000)
       if (data) {
         fetch('/api/send-email', {
           method: 'POST',
@@ -58,19 +67,18 @@ export default function ProudClient({ userEmail, achievements }: Props) {
     })
   }
 
-  async function react(achievement: Achievement) {
-    if (achievement.author === userEmail) return
-    startTransition(async () => {
-      await supabase.from('achievements').update({ partner_reacted: true }).eq('id', achievement.id)
-      router.refresh()
-    })
-  }
-
   return (
     <div className="pb-6">
+      {successMsg && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-sm font-medium text-white"
+          style={{ background: '#FFD93D', color: '#2D1B1B' }}>
+          {successMsg}
+        </div>
+      )}
+
       <PageHeader
         title="Proud of us"
-        subtitle="Everything you've celebrated"
+        subtitle="Everything worth celebrating"
         action={
           <button
             onClick={() => setAdding(v => !v)}
@@ -85,7 +93,7 @@ export default function ProudClient({ userEmail, achievements }: Props) {
       {/* Add form */}
       {adding && (
         <div className="mx-4 mb-4 rounded-2xl p-4 shadow-sm" style={{ background: 'white' }}>
-          <p className="text-sm font-semibold mb-2" style={{ color: '#2D1B1B' }}>What are you proud of?</p>
+          <p className="text-sm font-semibold mb-2" style={{ color: '#2D1B1B' }}>Tell {pNick} 🌟</p>
           <textarea
             value={text}
             onChange={e => setText(e.target.value)}
@@ -109,7 +117,7 @@ export default function ProudClient({ userEmail, achievements }: Props) {
               className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white"
               style={{ background: '#FFD93D' }}
             >
-              {isPending ? 'Adding…' : 'Add ⭐'}
+              {isPending ? 'Sharing…' : 'Share it ⭐'}
             </button>
           </div>
         </div>
@@ -120,7 +128,9 @@ export default function ProudClient({ userEmail, achievements }: Props) {
           <div className="text-center py-16">
             <p className="text-4xl mb-3">⭐</p>
             <p className="text-base font-medium" style={{ color: '#7A5C5C' }}>Nothing here yet</p>
-            <p className="text-sm mt-1" style={{ color: '#B08585' }}>Add the first thing you&apos;re proud of ♡</p>
+            <p className="text-sm mt-1" style={{ color: '#B08585' }}>
+              What&apos;s something small you did today that made you proud? Tell {pNick} 🌟
+            </p>
           </div>
         )}
 
@@ -136,22 +146,12 @@ export default function ProudClient({ userEmail, achievements }: Props) {
                 <Star size={16} className="mt-0.5 flex-shrink-0" fill="#FFD93D" style={{ color: '#FFD93D' }} />
                 <div className="flex-1">
                   <p className="text-sm leading-relaxed" style={{ color: '#2D1B1B' }}>{a.text}</p>
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-[10px]" style={{ color: '#B08585' }}>
-                      {isPartner ? 'Love' : 'You'} · {timeAgo(a.created_at)}
-                    </span>
-                    {isPartner && !a.partner_reacted && (
-                      <button
-                        onClick={() => react(a)}
-                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-                        style={{ background: '#FFE5E5', color: '#FF6B6B' }}
-                      >
-                        <Heart size={10} /> Heart
-                      </button>
-                    )}
-                    {a.partner_reacted && isPartner && (
-                      <span className="text-xs" style={{ color: '#FF6B6B' }}>♡ hearted</span>
-                    )}
+                  <p className="text-[10px] mt-1" style={{ color: '#B08585' }}>
+                    {isPartner ? pNick : myNick} · {timeAgo(a.created_at)}
+                  </p>
+                  <div className="mt-2 space-y-1">
+                    <ReactionsBar entityType="achievement" entityId={a.id} userId={userId} />
+                    <CommentThread entityType="achievement" entityId={a.id} userId={userId} myNick={myNick} partnerNick={pNick} />
                   </div>
                 </div>
               </div>

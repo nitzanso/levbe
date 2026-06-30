@@ -116,6 +116,24 @@ export async function sendPingNotification(to: string, senderName: string) {
   await send(to, `${senderName} is thinking of you 💛`, html)
 }
 
+export async function sendReactionNotification(to: string, reactorName: string, emoji: string, entityLabel: string, entityPath: string) {
+  const html = emailHtml(
+    `<strong>${reactorName}</strong> reacted to your ${entityLabel} with ${emoji}`,
+    'See it →',
+    `${APP_URL}${entityPath}`,
+  )
+  await send(to, `${reactorName} reacted to your ${entityLabel} ${emoji}`, html)
+}
+
+export async function sendCommentNotification(to: string, commenterName: string, commentText: string, entityLabel: string, entityPath: string) {
+  const html = emailHtml(
+    `<strong>${commenterName}</strong> left a comment on your ${entityLabel} 💬<br><br>"${commentText}"`,
+    'Reply →',
+    `${APP_URL}${entityPath}`,
+  )
+  await send(to, `${commenterName} left a comment 💬`, html)
+}
+
 export async function sendDailyNudge(to: string, partnerName: string) {
   const copy = NUDGE_COPY[Math.floor(Math.random() * NUDGE_COPY.length)](partnerName)
   const html = emailHtml(

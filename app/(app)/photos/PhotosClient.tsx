@@ -4,6 +4,9 @@ import { useState, useRef } from 'react'
 import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Camera, ArrowLeft, ImageIcon } from 'lucide-react'
+import { nickname, partnerNick } from '@/lib/nicknames'
+import ReactionsBar from '@/components/ReactionsBar'
+import CommentThread from '@/components/CommentThread'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,6 +36,7 @@ interface PendingPhoto {
 }
 
 interface Props {
+  userId: string
   userEmail: string
   userName: string
   partnerName: string
@@ -81,16 +85,19 @@ const TAG_STYLES: Record<PhotoTag, { bg: string; text: string; label: string }> 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function PhotosClient({
-  userEmail, userName, partnerName,
+  userId, userEmail, userName, partnerName,
   myPhotos: initialMyPhotos,
   partnerRevealed: initialPartnerRevealed,
   partnerPending: initialPartnerPending,
 }: Props) {
-  const supabase = createClient()
+  const supabase   = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const myNick     = nickname(userName)
+  const pNick      = partnerNick(userName) || partnerName
 
   // Local state mirrors
   const [myPhotos, setMyPhotos] = useState<FullPhoto[]>(initialMyPhotos)
+  const [uploadSuccess, setUploadSuccess] = useState('')
   const [partnerRevealed, setPartnerRevealed] = useState<FullPhoto[]>(initialPartnerRevealed)
   const [partnerPending, setPartnerPending] = useState<PendingPhoto[]>(initialPartnerPending)
 
@@ -173,6 +180,8 @@ export default function PhotosClient({
     setMyPhotos(prev => [data, ...prev])
     setUploading(false)
     resetUpload()
+    setUploadSuccess(`${pNick} will love opening this 📷`)
+    setTimeout(() => setUploadSuccess(''), 3000)
 
     // Notify partner by email (fire-and-forget — don't block the UI)
     fetch('/api/send-email', {
@@ -225,9 +234,17 @@ export default function PhotosClient({
 
   return (
     <div className="pb-6">
+      {/* Upload success flash */}
+      {uploadSuccess && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl shadow-lg text-sm font-medium text-white"
+          style={{ background: '#FF6B6B' }}>
+          {uploadSuccess}
+        </div>
+      )}
+
       <PageHeader
         title="Photos"
-        subtitle="Add to this month's collection"
+        subtitle={`${myNick} & ${pNick}'s collection`}
         action={
           <button
             onClick={() => setUploadOpen(true)}
@@ -295,7 +312,7 @@ export default function PhotosClient({
               <div className="text-5xl mb-3">📷</div>
               <p className="font-medium" style={{ color: '#7A5C5C' }}>No photos yet</p>
               <p className="text-sm mt-1" style={{ color: '#B08585' }}>
-                Tap + to add the first one ♡
+                Snap something from your day and send it to {pNick} 📷
               </p>
             </div>
           )}
@@ -307,6 +324,9 @@ export default function PhotosClient({
                 photo={photo}
                 isMe={photo.author === userEmail}
                 partnerName={partnerName}
+                userId={userId}
+                myNick={myNick}
+                pNick={pNick}
                 onOpen={() => setLightboxPhoto(photo)}
               />
             ))}
@@ -320,9 +340,9 @@ export default function PhotosClient({
           {sortedMonths.length === 0 && (
             <div className="text-center py-16">
               <div className="text-5xl mb-3">🗓</div>
-              <p className="font-medium" style={{ color: '#7A5C5C' }}>No photos revealed yet</p>
+              <p className="font-medium" style={{ color: '#7A5C5C' }}>Nothing here yet</p>
               <p className="text-sm mt-1" style={{ color: '#B08585' }}>
-                Revealed photos will appear here, grouped by month
+                Revealed photos will collect here month by month
               </p>
             </div>
           )}
@@ -345,7 +365,7 @@ export default function PhotosClient({
       {uploadOpen && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#FFFAF7' }}>
           <div className="flex items-center justify-between px-5 pt-14 pb-4">
-            <h2 className="text-xl font-bold" style={{ color: '#2D1B1B' }}>Add to the collection</h2>
+            <h2 className="text-xl font-bold" style={{ color: '#2D1B1B' }}>Send {pNick} a photo</h2>
             <button onClick={resetUpload}><X size={22} style={{ color: '#B08585' }} /></button>
           </div>
 
@@ -558,52 +578,63 @@ export default function PhotosClient({
 
 // ─── FeedCard ─────────────────────────────────────────────────────────────────
 
-function FeedCard({ photo, isMe, partnerName, onOpen }: {
+function FeedCard({ photo, isMe, partnerName, userId, myNick, pNick, onOpen }: {
   photo: FullPhoto
   isMe: boolean
   partnerName: string
+  userId: string
+  myNick: string
+  pNick: string
   onOpen: () => void
 }) {
   const isPending = photo.status === 'pending' && isMe
   const url = photoUrl(photo.image_path)
 
   return (
-    <button onClick={onOpen} className="relative rounded-2xl overflow-hidden text-left" style={{ aspectRatio: '1', background: '#F5EDE8' }}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={url}
-        alt={photo.caption ?? ''}
-        className="w-full h-full object-cover"
-        style={{
-          imageOrientation: 'from-image',
-          filter: isPending ? 'brightness(0.7)' : 'none',
-        } as React.CSSProperties}
-      />
+    <div className="rounded-2xl overflow-hidden" style={{ background: '#F5EDE8' }}>
+      <button
+        onClick={onOpen}
+        className="relative w-full"
+        style={{ aspectRatio: '1', display: 'block', background: '#F5EDE8' }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={photo.caption ?? ''}
+          className="w-full h-full object-cover"
+          style={{
+            imageOrientation: 'from-image',
+            filter: isPending ? 'brightness(0.7)' : 'none',
+          } as React.CSSProperties}
+        />
 
-      {/* Pending overlay */}
-      {isPending && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
-          <p className="text-white text-xs font-medium text-center leading-tight" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
-            Waiting for {partnerName}
-          </p>
-        </div>
-      )}
+        {isPending && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-2">
+            <p className="text-white text-xs font-medium text-center leading-tight" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+              Waiting for {partnerName}
+            </p>
+          </div>
+        )}
 
-      {/* Tag badge */}
-      {photo.tag && (
-        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
-          style={{ background: TAG_STYLES[photo.tag].bg, color: TAG_STYLES[photo.tag].text }}>
-          {photo.tag === 'achievement' ? '⭐' : photo.tag === 'moment' ? '✨' : '☀️'}
-        </div>
-      )}
+        {photo.tag && (
+          <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+            style={{ background: TAG_STYLES[photo.tag].bg, color: TAG_STYLES[photo.tag].text }}>
+            {photo.tag === 'achievement' ? '⭐' : photo.tag === 'moment' ? '✨' : '☀️'}
+          </div>
+        )}
 
-      {/* Caption overlay at bottom */}
-      {photo.caption && (
-        <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.6))' }}>
-          <p className="text-white text-[10px] leading-tight truncate">{photo.caption}</p>
-        </div>
-      )}
-    </button>
+        {photo.caption && (
+          <div className="absolute bottom-0 left-0 right-0 px-2 py-1.5" style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.6))' }}>
+            <p className="text-white text-[10px] leading-tight truncate">{photo.caption}</p>
+          </div>
+        )}
+      </button>
+
+      <div className="px-2 pt-1.5 pb-2 space-y-1">
+        <ReactionsBar entityType="photo" entityId={photo.id} userId={userId} />
+        <CommentThread entityType="photo" entityId={photo.id} userId={userId} myNick={myNick} partnerNick={pNick} />
+      </div>
+    </div>
   )
 }
 

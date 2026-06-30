@@ -13,5 +13,5 @@ export default async function NotesPage() {
 
   const { data: profile } = await supabase.from('users').select('*').eq('id', user!.id).maybeSingle()
 
-  return <NotesClient userEmail={user!.email ?? ''} userName={profile?.name ?? ''} notes={notes ?? []} />
+  return <NotesClient userId={user!.id} userEmail={user!.email ?? ''} userName={profile?.name ?? ''} notes={notes ?? []} />
 }

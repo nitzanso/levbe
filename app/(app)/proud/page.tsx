@@ -12,5 +12,5 @@ export default async function ProudPage() {
 
   const { data: profile } = await supabase.from('users').select('*').eq('id', user!.id).maybeSingle()
 
-  return <ProudClient userEmail={user!.email ?? ''} userName={profile?.name ?? ''} achievements={achievements ?? []} />
+  return <ProudClient userId={user!.id} userEmail={user!.email ?? ''} userName={profile?.name ?? ''} achievements={achievements ?? []} />
 }

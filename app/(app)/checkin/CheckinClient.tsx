@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import Card from '@/components/Card'
 import { createClient } from '@/lib/supabase/client'
+import { nickname, partnerNick } from '@/lib/nicknames'
+import ReactionsBar from '@/components/ReactionsBar'
+import CommentThread from '@/components/CommentThread'
 
 interface CheckIn {
+  id: string | null
   author: string
   date: string
   mood: number
@@ -14,6 +18,7 @@ interface CheckIn {
 }
 
 interface Props {
+  userId: string
   userEmail: string
   userName: string
   myCheckin: CheckIn | null
@@ -30,7 +35,9 @@ const moods = [
   { value: 5, emoji: '😊', label: 'Great' },
 ]
 
-export default function CheckinClient({ userEmail, myCheckin, partnerCheckin, recentCheckins, today }: Props) {
+export default function CheckinClient({ userId, userEmail, userName, myCheckin, partnerCheckin, recentCheckins, today }: Props) {
+  const pNick = partnerNick(userName)
+  const myNick = nickname(userName)
   const [selectedMood, setSelectedMood] = useState<number | null>(myCheckin?.mood ?? null)
   const [note, setNote] = useState(myCheckin?.note ?? '')
   const [saved, setSaved] = useState(!!myCheckin)
@@ -70,7 +77,7 @@ export default function CheckinClient({ userEmail, myCheckin, partnerCheckin, re
 
   return (
     <div className="pb-6">
-      <PageHeader title="Check in" subtitle="How are you today?" />
+      <PageHeader title="Check in" subtitle={`${pNick} wants to know 🤍`} />
 
       <div className="px-4 space-y-4">
         {/* My mood selector */}
@@ -111,20 +118,26 @@ export default function CheckinClient({ userEmail, myCheckin, partnerCheckin, re
           className="w-full py-3.5 rounded-2xl font-semibold text-white transition-all"
           style={{ background: saved ? '#4ECDC4' : (!selectedMood ? '#E0E0E0' : '#FF6B6B'), color: !selectedMood ? '#B08585' : 'white' }}
         >
-          {isPending ? 'Saving…' : saved ? '✓ Saved' : 'Save check-in'}
+          {isPending ? 'Saving…' : saved ? `${pNick} can see how you're feeling now 🤍` : `Tell ${pNick} how I'm feeling`}
         </button>
 
         {/* Partner's check-in */}
         {partnerCheckin && (
           <Card accent="teal">
-            <p className="text-xs mb-2 font-medium" style={{ color: '#B08585' }}>Your love today</p>
-            <div className="flex items-center gap-3">
+            <p className="text-xs mb-2 font-medium" style={{ color: '#B08585' }}>{pNick} today</p>
+            <div className="flex items-center gap-3 mb-3">
               <span className="text-3xl">{moods.find(m => m.value === partnerCheckin.mood)?.emoji}</span>
               <div>
                 <p className="text-sm font-semibold" style={{ color: '#2D1B1B' }}>{moods.find(m => m.value === partnerCheckin.mood)?.label}</p>
                 {partnerCheckin.note && <p className="text-sm mt-1" style={{ color: '#7A5C5C' }}>{partnerCheckin.note}</p>}
               </div>
             </div>
+            {partnerCheckin.id && (
+              <div className="space-y-1 pt-1 border-t" style={{ borderColor: '#E0F7F5' }}>
+                <ReactionsBar entityType="checkin" entityId={partnerCheckin.id} userId={userId} />
+                <CommentThread entityType="checkin" entityId={partnerCheckin.id} userId={userId} myNick={myNick} partnerNick={pNick} />
+              </div>
+            )}
           </Card>
         )}
 
@@ -141,7 +154,7 @@ export default function CheckinClient({ userEmail, myCheckin, partnerCheckin, re
                       <div key={i} className="flex items-center gap-1.5">
                         <span className="text-xl">{moods.find(m => m.value === c.mood)?.emoji}</span>
                         <span className="text-xs" style={{ color: '#7A5C5C' }}>
-                          {c.author === userEmail ? 'You' : 'Love'}
+                          {c.author === userEmail ? myNick : pNick}
                         </span>
                       </div>
                     ))}

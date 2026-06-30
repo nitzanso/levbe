@@ -6,6 +6,8 @@ import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, X, Pen, Type } from 'lucide-react'
 import { nickname, partnerNick } from '@/lib/nicknames'
+import ReactionsBar from '@/components/ReactionsBar'
+import CommentThread from '@/components/CommentThread'
 
 interface Note {
   id: string
@@ -16,6 +18,7 @@ interface Note {
 }
 
 interface Props {
+  userId: string
   userEmail: string
   userName: string
   notes: Note[]
@@ -31,7 +34,7 @@ function timeAgo(dateStr: string) {
   return `${Math.floor(hours / 24)}d ago`
 }
 
-export default function NotesClient({ userEmail, userName, notes }: Props) {
+export default function NotesClient({ userId, userEmail, userName, notes }: Props) {
   const pNick = partnerNick(userName)
   const myNick = nickname(userName)
   const [composing, setComposing] = useState<'note' | 'drawing' | null>(null)
@@ -252,7 +255,7 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
         {notes.map(note => {
           const isMe = note.author === userEmail
           return (
-            <div key={note.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+            <div key={note.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
               <div
                 className="max-w-[80%] rounded-2xl overflow-hidden shadow-sm"
                 style={{
@@ -275,6 +278,10 @@ export default function NotesClient({ userEmail, userName, notes }: Props) {
                   </span>
                   <span className="text-[10px]" style={{ color: '#B08585' }}>{timeAgo(note.created_at)}</span>
                 </div>
+              </div>
+              <div className="max-w-[80%] mt-1 px-1">
+                <ReactionsBar entityType="note" entityId={note.id} userId={userId} />
+                <CommentThread entityType="note" entityId={note.id} userId={userId} myNick={myNick} partnerNick={pNick} />
               </div>
             </div>
           )
