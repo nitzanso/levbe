@@ -4,10 +4,17 @@ import { useState, useRef, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
-import { Plus, X, Pen, Type } from 'lucide-react'
+import { Plus, X, Pen, Type, Eraser } from 'lucide-react'
 import { nickname, partnerNick } from '@/lib/nicknames'
 import ReactionsBar from '@/components/ReactionsBar'
 import CommentThread from '@/components/CommentThread'
+
+const DRAW_COLORS = [
+  '#FF6B6B', '#FF9F7F', '#FFD93D', '#4ECDC4',
+  '#6C5CE7', '#00B894', '#2D3436', '#FFFFFF',
+]
+const BRUSH_SIZES = [2, 5, 11]
+const STAMPS = ['♥', '⭐', '🌙', '✨', '🌸', '💛']
 
 interface Note {
   id: string
@@ -44,6 +51,9 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [hasDrawing, setHasDrawing] = useState(false)
+  const [drawColor, setDrawColor] = useState(DRAW_COLORS[0])
+  const [brushSize, setBrushSize] = useState(BRUSH_SIZES[1])
+  const [isErasing, setIsErasing] = useState(false)
   const router = useRouter()
   const supabase = createClient()
   const lastPos = useRef<{ x: number; y: number } | null>(null)
@@ -69,15 +79,29 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
     if (!isDrawing || !canvasRef.current) return
     const ctx = canvasRef.current.getContext('2d')!
     const pos = getPos(e)
-    ctx.strokeStyle = '#FF6B6B'
-    ctx.lineWidth = 3
+    ctx.globalCompositeOperation = isErasing ? 'destination-out' : 'source-over'
+    ctx.strokeStyle = isErasing ? 'rgba(0,0,0,1)' : drawColor
+    ctx.lineWidth = isErasing ? brushSize * 3 : brushSize
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.beginPath()
     ctx.moveTo(lastPos.current!.x, lastPos.current!.y)
     ctx.lineTo(pos.x, pos.y)
     ctx.stroke()
+    ctx.globalCompositeOperation = 'source-over'
     lastPos.current = pos
+    setHasDrawing(true)
+  }
+
+  function addStamp(stamp: string) {
+    const canvas = canvasRef.current!
+    const ctx = canvas.getContext('2d')!
+    ctx.font = '72px serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    const x = 120 + Math.random() * (canvas.width - 240)
+    const y = 80 + Math.random() * (canvas.height - 160)
+    ctx.fillText(stamp, x, y)
     setHasDrawing(true)
   }
 
@@ -118,7 +142,15 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
 
   async function saveDrawing() {
     const canvas = canvasRef.current!
-    const content = canvas.toDataURL('image/png')
+    // Bake a white background into the exported PNG so transparent areas don't show through
+    const offscreen = document.createElement('canvas')
+    offscreen.width = canvas.width
+    offscreen.height = canvas.height
+    const octx = offscreen.getContext('2d')!
+    octx.fillStyle = '#FFFFFF'
+    octx.fillRect(0, 0, offscreen.width, offscreen.height)
+    octx.drawImage(canvas, 0, 0)
+    const content = offscreen.toDataURL('image/png')
     startTransition(async () => {
       const { data } = await supabase.from('notes_and_doodles').insert({
         author: userEmail,
@@ -126,7 +158,7 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
         content,
       }).select().single()
       clearCanvas()
-      setComposing(null)
+      // Stay on drawing tab so they can draw another one
       router.refresh()
       setSuccessMsg(`On its way to ${pNick} ✏️`)
       setTimeout(() => setSuccessMsg(''), 3000)
@@ -166,7 +198,9 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
       {/* Compose panel */}
       {composing && (
         <div className="fixed inset-0 z-50 flex flex-col" style={{ background: '#FFFAF7' }}>
-          <div className="flex items-center justify-between px-5 pt-14 pb-4">
+
+          {/* Header: tab switcher + close */}
+          <div className="flex-none flex items-center justify-between px-5 pt-14 pb-3">
             <div className="flex gap-2">
               <button
                 onClick={() => setComposing('note')}
@@ -188,41 +222,111 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
             </button>
           </div>
 
-          <div className="flex-1 px-5">
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto px-5 pb-2 space-y-3">
             {composing === 'note' ? (
               <textarea
                 value={noteText}
                 onChange={e => setNoteText(e.target.value)}
                 placeholder={`Write something for ${pNick}…`}
-                className="w-full h-48 text-lg resize-none outline-none rounded-2xl p-4 font-handwriting"
+                className="w-full h-52 text-lg resize-none outline-none rounded-2xl p-4 font-handwriting"
                 style={{ background: 'white', color: '#2D1B1B', border: '2px solid #FFE5E5' }}
                 autoFocus
               />
             ) : (
-              <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '2px solid #E0F7F5' }}>
-                <canvas
-                  ref={canvasRef}
-                  width={700}
-                  height={500}
-                  className="w-full touch-none"
-                  onMouseDown={startDraw}
-                  onMouseMove={draw}
-                  onMouseUp={endDraw}
-                  onMouseLeave={endDraw}
-                  onTouchStart={startDraw}
-                  onTouchMove={draw}
-                  onTouchEnd={endDraw}
-                  style={{ cursor: 'crosshair' }}
-                />
-              </div>
+              <>
+                {/* Color palette + eraser */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {DRAW_COLORS.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => { setDrawColor(c); setIsErasing(false) }}
+                      className="w-8 h-8 rounded-full flex-shrink-0 transition-transform"
+                      style={{
+                        background: c,
+                        border: `3px solid ${drawColor === c && !isErasing ? '#2D1B1B' : c === '#FFFFFF' ? '#E0E0E0' : 'transparent'}`,
+                        transform: drawColor === c && !isErasing ? 'scale(1.15)' : 'scale(1)',
+                        boxShadow: c === '#FFFFFF' ? '0 0 0 1px #E0E0E0 inset' : 'none',
+                      }}
+                    />
+                  ))}
+                  <button
+                    onClick={() => setIsErasing(true)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-transform"
+                    style={{
+                      background: isErasing ? '#FFE5E5' : '#F5EDE8',
+                      border: `3px solid ${isErasing ? '#FF6B6B' : 'transparent'}`,
+                      transform: isErasing ? 'scale(1.15)' : 'scale(1)',
+                    }}
+                    title="Eraser"
+                  >
+                    <Eraser size={14} style={{ color: isErasing ? '#FF6B6B' : '#B08585' }} />
+                  </button>
+
+                  {/* Brush sizes */}
+                  <div className="flex items-center gap-1.5 ml-1">
+                    {BRUSH_SIZES.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => setBrushSize(s)}
+                        className="flex items-center justify-center w-8 h-8 rounded-full"
+                        style={{ background: brushSize === s ? '#FFE5E5' : '#F5EDE8' }}
+                      >
+                        <div
+                          className="rounded-full"
+                          style={{
+                            width: s === BRUSH_SIZES[0] ? 4 : s === BRUSH_SIZES[1] ? 8 : 14,
+                            height: s === BRUSH_SIZES[0] ? 4 : s === BRUSH_SIZES[1] ? 8 : 14,
+                            background: brushSize === s ? '#FF6B6B' : '#B08585',
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Stamps */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium mr-1" style={{ color: '#B08585' }}>Stamp</span>
+                  {STAMPS.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => addStamp(s)}
+                      className="text-xl w-9 h-9 rounded-xl flex items-center justify-center"
+                      style={{ background: '#F5EDE8' }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Canvas */}
+                <div className="rounded-2xl overflow-hidden" style={{ background: 'white', border: '2px solid #E0F7F5' }}>
+                  <canvas
+                    ref={canvasRef}
+                    width={700}
+                    height={380}
+                    className="w-full touch-none"
+                    onMouseDown={startDraw}
+                    onMouseMove={draw}
+                    onMouseUp={endDraw}
+                    onMouseLeave={endDraw}
+                    onTouchStart={startDraw}
+                    onTouchMove={draw}
+                    onTouchEnd={endDraw}
+                    style={{ cursor: isErasing ? 'cell' : 'crosshair', display: 'block' }}
+                  />
+                </div>
+              </>
             )}
           </div>
 
-          <div className="px-5 pb-8 pt-4 flex gap-3">
+          {/* Fixed footer — always visible */}
+          <div className="flex-none px-5 pb-8 pt-3 flex gap-3" style={{ background: '#FFFAF7' }}>
             {composing === 'drawing' && (
               <button
                 onClick={clearCanvas}
-                className="flex-1 py-3.5 rounded-2xl font-medium"
+                className="px-5 py-4 rounded-2xl font-semibold text-sm"
                 style={{ background: '#F5EDE8', color: '#7A5C5C' }}
               >
                 Clear
@@ -230,11 +334,11 @@ export default function NotesClient({ userId, userEmail, userName, notes }: Prop
             )}
             <button
               onClick={composing === 'note' ? saveNote : saveDrawing}
-              disabled={isPending || (composing === 'note' ? !noteText.trim() : !hasDrawing)}
-              className="flex-1 py-3.5 rounded-2xl font-semibold text-white"
+              disabled={isPending || (composing === 'note' && !noteText.trim())}
+              className="flex-1 py-4 rounded-2xl font-bold text-white text-base"
               style={{ background: isPending ? '#B08585' : '#FF6B6B' }}
             >
-              {isPending ? 'Sending…' : 'Send ♡'}
+              {isPending ? 'Sending…' : `Send to ${pNick} ✏️`}
             </button>
           </div>
         </div>
