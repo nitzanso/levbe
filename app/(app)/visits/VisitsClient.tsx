@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, MapPin, Check } from 'lucide-react'
+import { partnerNick } from '@/lib/nicknames'
 
 interface Visit {
   id: string
@@ -40,7 +41,8 @@ function daysUntil(dateStr: string) {
   return `${d} days away`
 }
 
-export default function VisitsClient({ userEmail, visits }: Props) {
+export default function VisitsClient({ userEmail, userName, visits }: Props) {
+  const pNick = partnerNick(userName)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ traveler: '', start_date: '', end_date: '', notes: '', status: 'proposed' as 'proposed' | 'confirmed' })
   const [isPending, startTransition] = useTransition()
@@ -226,9 +228,11 @@ export default function VisitsClient({ userEmail, visits }: Props) {
 
         {upcoming.length === 0 && (
           <div className="text-center py-10">
-            <p className="text-4xl mb-3">✈️</p>
+            <p className="text-4xl mb-3">🌍</p>
             <p className="text-base font-medium" style={{ color: '#7A5C5C' }}>No visits planned yet</p>
-            <p className="text-sm mt-1" style={{ color: '#B08585' }}>Tap + to add one ♡</p>
+            <p className="text-sm mt-1" style={{ color: '#B08585' }}>
+              When&apos;s the next time you&apos;ll be in the same city as {pNick}? 🌍
+            </p>
           </div>
         )}
 

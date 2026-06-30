@@ -5,6 +5,8 @@ export default async function ThisWeekPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  const { data: profile } = await supabase.from('users').select('name').eq('id', user!.id).maybeSingle()
+
   const today = new Date()
   const weekStart = new Date(today)
   weekStart.setDate(today.getDate() - today.getDay())
@@ -33,6 +35,7 @@ export default async function ThisWeekPage() {
   return (
     <ThisWeekClient
       userEmail={user!.email ?? ''}
+      userName={profile?.name ?? user!.email?.split('@')[0] ?? 'you'}
       currentMoment={currentMoment}
       ideaBank={ideaBank ?? []}
       pastMoments={pastMoments ?? []}

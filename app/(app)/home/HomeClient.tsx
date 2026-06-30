@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { Calendar, Star, PenLine, CheckCircle, Sparkles, Camera, Bell } from 'lucide-react'
 import Card from '@/components/Card'
+import { nickname, partnerNick } from '@/lib/nicknames'
 
 interface Props {
   userEmail: string
@@ -45,15 +46,19 @@ function timeAgo(dateStr: string) {
 const PING_DAILY_LIMIT = 3
 
 export default function HomeClient({ userName, quote, nextVisit, todayCheckin, latestNote, achievements, weekMoment, pendingPhotoCount, partnerName, todayPingCount }: Props) {
+  const myNick = nickname(userName)
+  const pNick  = partnerNick(userName) || partnerName
+
   const [pingState, setPingState] = useState<'idle' | 'sending' | 'sent' | 'maxed'>(
     todayPingCount >= PING_DAILY_LIMIT ? 'maxed' : 'idle'
   )
 
   const greeting = (() => {
     const h = new Date().getHours()
-    if (h < 12) return 'Good morning'
-    if (h < 18) return 'Good afternoon'
-    return 'Good evening'
+    if (h >= 6  && h < 12) return `Good morning, ${myNick} ☀️`
+    if (h >= 12 && h < 18) return `Hey ${myNick} 👋`
+    if (h >= 18 && h < 23) return `Good evening, ${myNick} 🌙`
+    return `Still up, ${myNick}? 🌙`
   })()
 
   async function sendPing() {
@@ -77,8 +82,7 @@ export default function HomeClient({ userName, quote, nextVisit, todayCheckin, l
       {/* Header */}
       <div className="pt-14 pb-2 flex items-center justify-between">
         <div>
-          <p className="text-sm" style={{ color: '#B08585' }}>{greeting},</p>
-          <h1 className="text-2xl font-bold capitalize" style={{ color: '#2D1B1B' }}>{userName} ♡</h1>
+          <h1 className="text-2xl font-bold" style={{ color: '#2D1B1B' }}>{greeting}</h1>
         </div>
         {/* Ping button — sends a little nudge email to your partner */}
         <button
@@ -98,15 +102,15 @@ export default function HomeClient({ userName, quote, nextVisit, todayCheckin, l
         </button>
       </div>
 
-      {/* Ping feedback — shown briefly after tapping */}
+      {/* Ping feedback */}
       {pingState === 'sent' && (
         <div className="mt-1 text-center text-xs" style={{ color: '#2BA99C' }}>
-          ping sent! 💌
+          Ping sent! {pNick} knows you&apos;re thinking of them 💛
         </div>
       )}
       {pingState === 'maxed' && (
         <div className="mt-1 text-center text-xs" style={{ color: '#B08585' }}>
-          you've already pinged {PING_DAILY_LIMIT}× today — they know you're thinking of them 🤍
+          You&apos;ve already pinged {PING_DAILY_LIMIT}× today — {pNick} knows you&apos;re thinking of them 🤍
         </div>
       )}
 

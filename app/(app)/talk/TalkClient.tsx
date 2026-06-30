@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import PageHeader from '@/components/PageHeader'
 import { createClient } from '@/lib/supabase/client'
 import { Plus, ChevronDown, ChevronRight, Check } from 'lucide-react'
+import { partnerNick } from '@/lib/nicknames'
 
 interface DiscussionEntry {
   id: string
@@ -25,6 +26,7 @@ interface Discussion {
 
 interface Props {
   userEmail: string
+  userName: string
   discussions: Discussion[]
 }
 
@@ -36,7 +38,8 @@ function timeAgo(dateStr: string) {
   return `${days} days ago`
 }
 
-export default function TalkClient({ userEmail, discussions }: Props) {
+export default function TalkClient({ userEmail, userName, discussions }: Props) {
+  const pNick = partnerNick(userName)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [adding, setAdding] = useState(false)
   const [newTitle, setNewTitle] = useState('')
@@ -91,7 +94,7 @@ export default function TalkClient({ userEmail, discussions }: Props) {
     <div className="pb-6">
       <PageHeader
         title="Talk it out"
-        subtitle="A space for things that matter"
+        subtitle="A space to work things through"
         action={
           <button
             onClick={() => setAdding(v => !v)}
@@ -106,11 +109,11 @@ export default function TalkClient({ userEmail, discussions }: Props) {
       {/* New discussion form */}
       {adding && (
         <div className="mx-4 mb-4 rounded-2xl p-4 shadow-sm" style={{ background: 'white' }}>
-          <p className="text-sm font-semibold mb-2" style={{ color: '#2D1B1B' }}>Start a conversation</p>
+          <p className="text-sm font-semibold mb-2" style={{ color: '#2D1B1B' }}>What&apos;s on your mind?</p>
           <input
             value={newTitle}
             onChange={e => setNewTitle(e.target.value)}
-            placeholder="What do you want to talk about?"
+            placeholder="Something weighing on you?"
             className="w-full px-3 py-2.5 rounded-xl text-sm outline-none"
             style={{ border: '1.5px solid #F5EDE8', color: '#2D1B1B' }}
             autoFocus
@@ -126,9 +129,9 @@ export default function TalkClient({ userEmail, discussions }: Props) {
       <div className="px-4 space-y-3">
         {discussions.length === 0 && (
           <div className="text-center py-16">
-            <p className="text-4xl mb-3">💬</p>
-            <p className="text-base font-medium" style={{ color: '#7A5C5C' }}>Nothing here yet</p>
-            <p className="text-sm mt-1" style={{ color: '#B08585' }}>Start a conversation when something needs addressing ♡</p>
+            <p className="text-4xl mb-3">💛</p>
+            <p className="text-base font-medium" style={{ color: '#7A5C5C' }}>Nothing to work through right now</p>
+            <p className="text-sm mt-1" style={{ color: '#B08585' }}>That&apos;s a good sign 💛</p>
           </div>
         )}
 
@@ -209,7 +212,7 @@ function DiscussionCard({ discussion: d, userEmail, expanded, onToggle, replyTex
           {/* Entries thread */}
           <div className="px-4 py-3 space-y-3">
             {(d.entries ?? []).length === 0 && (
-              <p className="text-sm" style={{ color: '#B08585' }}>No replies yet — add the first one below</p>
+              <p className="text-sm" style={{ color: '#B08585' }}>No replies yet — you go first ♡</p>
             )}
             {(d.entries ?? []).map(entry => {
               const isMe = entry.author === userEmail
@@ -225,7 +228,7 @@ function DiscussionCard({ discussion: d, userEmail, expanded, onToggle, replyTex
                   >
                     <p className="text-sm" style={{ color: '#2D1B1B' }}>{entry.text}</p>
                     <p className="text-[10px] mt-0.5" style={{ color: '#B08585' }}>
-                      {isMe ? 'You' : 'Love'} · {timeAgo(entry.created_at)}
+                      {timeAgo(entry.created_at)}
                     </p>
                   </div>
                 </div>

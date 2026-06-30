@@ -6,6 +6,7 @@ import PageHeader from '@/components/PageHeader'
 import Card from '@/components/Card'
 import { createClient } from '@/lib/supabase/client'
 import { Shuffle, Plus, Check } from 'lucide-react'
+import { partnerNick } from '@/lib/nicknames'
 
 interface Moment {
   id: string
@@ -25,6 +26,7 @@ interface IdeaItem {
 
 interface Props {
   userEmail: string
+  userName: string
   currentMoment: Moment | null
   ideaBank: IdeaItem[]
   pastMoments: Moment[]
@@ -37,7 +39,8 @@ const categoryEmoji: Record<string, string> = {
   ritual: '✨',
 }
 
-export default function ThisWeekClient({ userEmail, currentMoment, ideaBank, pastMoments, weekStartStr }: Props) {
+export default function ThisWeekClient({ userEmail, userName, currentMoment, ideaBank, pastMoments, weekStartStr }: Props) {
+  const pNick = partnerNick(userName)
   const [tab, setTab] = useState<'this-week' | 'bank'>('this-week')
   const [proposedIdea, setProposedIdea] = useState('')
   const [freeform, setFreeform] = useState('')
@@ -139,13 +142,13 @@ export default function ThisWeekClient({ userEmail, currentMoment, ideaBank, pas
                 </button>
               )}
               {myProposal && !currentMoment.confirmed && (
-                <p className="text-sm" style={{ color: '#B08585' }}>Waiting for their answer…</p>
+                <p className="text-sm" style={{ color: '#B08585' }}>Waiting for {pNick}&apos;s answer…</p>
               )}
             </div>
           ) : (
             <div className="rounded-3xl p-5" style={{ background: '#F5EDE8' }}>
-              <p className="text-base font-medium mb-1" style={{ color: '#7A5C5C' }}>Nothing planned yet</p>
-              <p className="text-sm" style={{ color: '#B08585' }}>Propose something below ↓</p>
+              <p className="text-base font-medium mb-1" style={{ color: '#7A5C5C' }}>No plan yet for this week</p>
+              <p className="text-sm" style={{ color: '#B08585' }}>Propose something fun for you and {pNick} ✨</p>
             </div>
           )}
 
@@ -177,7 +180,7 @@ export default function ThisWeekClient({ userEmail, currentMoment, ideaBank, pas
                 className="w-full mt-3 py-3 rounded-xl text-sm font-semibold text-white"
                 style={{ background: '#FF6B6B' }}
               >
-                {isPending ? 'Proposing…' : 'Propose ♡'}
+                {isPending ? 'Proposing…' : 'Propose it ♡'}
               </button>
             </Card>
           )}
