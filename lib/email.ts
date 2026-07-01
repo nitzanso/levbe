@@ -134,6 +134,15 @@ export async function sendCommentNotification(to: string, commenterName: string,
   await send(to, `${commenterName} left a comment 💬`, html)
 }
 
+export async function sendTaskCommentNotification(to: string, commenterName: string, taskTitle: string, commentText: string) {
+  const html = emailHtml(
+    `<strong>${commenterName}</strong> commented on your task "<em>${taskTitle}</em>" 💬<br><br>"${commentText}"`,
+    'See the task →',
+    `${APP_URL}/tasks`,
+  )
+  await send(to, `${commenterName} commented on your task 💬`, html)
+}
+
 export async function sendDailyNudge(to: string, partnerName: string) {
   const copy = NUDGE_COPY[Math.floor(Math.random() * NUDGE_COPY.length)](partnerName)
   const html = emailHtml(

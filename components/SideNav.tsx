@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   Home, Sparkles, Calendar, Flag, Star,
   CheckCircle, MessageCircle, PenLine, Camera,
-  ChevronLeft, ChevronRight, LogOut,
+  ChevronLeft, ChevronRight, LogOut, ListTodo,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { href: '/proud',      icon: Star,          label: 'Proud of Us'     },
   { href: '/checkin',    icon: CheckCircle,   label: 'Check In'        },
   { href: '/talk',       icon: MessageCircle, label: 'Talk It Out'     },
+  { href: '/tasks',      icon: ListTodo,      label: 'Tasks'           },
   { href: '/notes',      icon: PenLine,       label: 'Notes & Doodles' },
   { href: '/photos',     icon: Camera,        label: 'Photos'          },
 ]

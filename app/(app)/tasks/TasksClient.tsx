@@ -129,7 +129,7 @@ function TagPill({ tag }: { tag: string }) {
 
 // ─── Main component ────────────────────────────────────────────────────────────
 
-export default function TasksClient({ userEmail, allProfiles, tasks: initialTasks }: Props) {
+export default function TasksClient({ userEmail, userName, allProfiles, tasks: initialTasks }: Props) {
   const supabase = createClient()
 
   // Board state
@@ -276,12 +276,24 @@ export default function TasksClient({ userEmail, allProfiles, tasks: initialTask
   async function addComment() {
     if (!commentText.trim() || !selectedId) return
     setSavingComment(true)
+    const text = commentText.trim()
     const { data, error } = await supabase.from('task_comments').insert({
       task_id: selectedId,
       author: userEmail,
-      text: commentText.trim(),
+      text,
     }).select().single()
-    if (!error && data) setComments(prev => [...prev, data])
+    if (!error && data) {
+      setComments(prev => [...prev, data])
+      // Notify task creator if it's not the commenter
+      const task = tasks.find(t => t.id === selectedId)
+      if (task && task.created_by !== userEmail) {
+        fetch('/api/task-comment-notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ taskId: selectedId, taskTitle: task.title, commentText: text }),
+        }).catch(() => {})
+      }
+    }
     setCommentText('')
     setSavingComment(false)
   }
@@ -315,7 +327,7 @@ export default function TasksClient({ userEmail, allProfiles, tasks: initialTask
       <div className="flex-shrink-0">
         <PageHeader
           title="Tasks"
-          subtitle="Shared to-do board"
+          subtitle="Things to do together"
           action={
             <button
               onClick={() => setAddOpen(true)}
@@ -367,6 +379,22 @@ export default function TasksClient({ userEmail, allProfiles, tasks: initialTask
       </div>
 
       {/* Kanban board — horizontal scroll */}
+      {tasks.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center px-8 text-center pb-16">
+          <div className="text-5xl mb-4">📋</div>
+          <p className="text-base font-semibold mb-1" style={{ color: '#2D1B1B' }}>
+            Nothing to tackle yet, {userName} —
+          </p>
+          <p className="text-sm mb-6" style={{ color: '#B08585' }}>add your first shared to-do</p>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="px-6 py-3 rounded-2xl font-semibold text-white text-sm"
+            style={{ background: '#FF6B6B' }}
+          >
+            Add something to work on
+          </button>
+        </div>
+      ) : (
       <div
         className="flex-1 flex gap-3 overflow-x-auto overflow-y-hidden px-4 pb-4"
         style={{ scrollSnapType: 'x mandatory', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
@@ -395,7 +423,7 @@ export default function TasksClient({ userEmail, allProfiles, tasks: initialTask
               <div className="flex-1 overflow-y-auto px-2 pb-2 space-y-2">
                 {colTasks.length === 0 && (
                   <div className="text-center py-8">
-                    <p className="text-xs" style={{ color: col.color + '99' }}>Empty</p>
+                    <p className="text-xs" style={{ color: col.color + '99' }}>Nothing here yet</p>
                   </div>
                 )}
                 {colTasks.map(task => (
@@ -415,6 +443,7 @@ export default function TasksClient({ userEmail, allProfiles, tasks: initialTask
           )
         })}
       </div>
+      )}
 
       {/* ─── Add task overlay ──────────────────────────────────────────────── */}
       {addOpen && (
@@ -517,7 +546,7 @@ export default function TasksClient({ userEmail, allProfiles, tasks: initialTask
               className="w-full py-4 rounded-2xl font-semibold text-white"
               style={{ background: addForm.title.trim() ? '#FF6B6B' : '#E0E0E0' }}
             >
-              Create task
+              Add something to work on
             </button>
           </div>
         </div>
