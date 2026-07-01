@@ -164,6 +164,11 @@ export default function HomeClient({
         .single()
       if (data) {
         setLocalDreams(d => d.map(x => x.id === tempId ? data : x))
+        fetch('/api/notify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'dream_added', entityType: 'dream', entityId: data.id }),
+        }).catch(() => {})
       }
     })
   }

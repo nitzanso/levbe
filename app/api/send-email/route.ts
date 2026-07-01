@@ -5,6 +5,7 @@ import {
   sendAchievementNotification,
   sendPingNotification,
 } from '@/lib/email'
+import { nickname } from '@/lib/nicknames'
 
 // TODO: add per-user notification preference toggles when needed
 
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
   }
 
   const senderName = me.name ?? user.email?.split('@')[0] ?? 'Your love'
+  const senderNick = nickname(senderName)
   const todayStart = new Date()
   todayStart.setUTCHours(0, 0, 0, 0)
 
@@ -62,7 +64,14 @@ export async function POST(request: Request) {
       type: 'ping',
     })
 
-    await sendPingNotification(partner.email, senderName)
+    await Promise.all([
+      sendPingNotification(partner.email, senderName),
+      supabase.from('notifications').insert({
+        recipient: partner.id,
+        type: 'ping',
+        message: `${senderNick} is thinking of you 👋`,
+      }),
+    ])
     return Response.json({ ok: true })
   }
 
@@ -74,12 +83,40 @@ export async function POST(request: Request) {
       related_entity: body.relatedEntity ?? null,
     })
 
+    // Extract entity id from "photo:uuid" style strings
+    const entityId = body.relatedEntity ? body.relatedEntity.split(':')[1] ?? null : null
+
     if (body.activityType === 'photo') {
-      await sendPhotoNotification(partner.email, senderName)
+      await Promise.all([
+        sendPhotoNotification(partner.email, senderName),
+        supabase.from('notifications').insert({
+          recipient: partner.id, type: 'photo',
+          entity_type: 'photo', entity_id: entityId,
+          message: `${senderNick} sent you a photo 📷`,
+        }),
+      ])
     } else if (body.activityType === 'note') {
-      await sendNoteNotification(partner.email, senderName, body.noteType ?? 'note')
+      const isDrawing = body.noteType === 'drawing'
+      await Promise.all([
+        sendNoteNotification(partner.email, senderName, body.noteType ?? 'note'),
+        supabase.from('notifications').insert({
+          recipient: partner.id,
+          type: isDrawing ? 'drawing' : 'note',
+          entity_type: 'note', entity_id: entityId,
+          message: isDrawing
+            ? `${senderNick} left you a drawing ✏️`
+            : `${senderNick} left you a note 💛`,
+        }),
+      ])
     } else if (body.activityType === 'achievement') {
-      await sendAchievementNotification(partner.email, senderName)
+      await Promise.all([
+        sendAchievementNotification(partner.email, senderName),
+        supabase.from('notifications').insert({
+          recipient: partner.id, type: 'achievement',
+          entity_type: 'achievement', entity_id: entityId,
+          message: `${senderNick} shared something they're proud of 🌟`,
+        }),
+      ])
     }
 
     return Response.json({ ok: true })

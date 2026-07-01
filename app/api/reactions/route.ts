@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { sendReactionNotification } from '@/lib/email'
+import { nickname } from '@/lib/nicknames'
 
 const ENTITY_TABLE: Record<string, string> = {
   photo: 'photos',
@@ -52,8 +53,19 @@ export async function POST(request: Request) {
     const { data: entity } = await supabase.from(table).select('author').eq('id', entityId).maybeSingle()
     if (entity && entity.author !== user.email) {
       const { data: meProfile } = await supabase.from('users').select('name').eq('id', user.id).maybeSingle()
+      const { data: recipientProfile } = await supabase.from('users').select('id').eq('email', entity.author).maybeSingle()
       const senderName = meProfile?.name ?? user.email.split('@')[0]
-      await sendReactionNotification(entity.author, senderName, emoji, entityType, ENTITY_PATH[entityType])
+      const senderNick = nickname(senderName)
+      await Promise.all([
+        sendReactionNotification(entity.author, senderName, emoji, entityType, ENTITY_PATH[entityType]),
+        recipientProfile ? supabase.from('notifications').insert({
+          recipient: recipientProfile.id,
+          type: 'reaction',
+          entity_type: entityType,
+          entity_id: String(entityId),
+          message: `${senderNick} reacted ${emoji} to your ${entityType}`,
+        }) : Promise.resolve(),
+      ])
     }
   }
 

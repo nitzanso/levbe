@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { sendCommentNotification } from '@/lib/email'
+import { nickname } from '@/lib/nicknames'
 
 const ENTITY_TABLE: Record<string, string> = {
   photo: 'photos',
@@ -43,15 +44,20 @@ export async function POST(request: Request) {
   if (table && user.email) {
     const { data: entity } = await supabase.from(table).select('author').eq('id', entityId).maybeSingle()
     if (entity && entity.author !== user.email) {
-      const { data: meProfile } = await supabase.from('users').select('name').eq('id', user.id).maybeSingle()
+      const { data: meProfile } = await supabase.from('users').select('id, name').eq('id', user.id).maybeSingle()
+      const { data: recipientProfile } = await supabase.from('users').select('id').eq('email', entity.author).maybeSingle()
       const senderName = meProfile?.name ?? user.email.split('@')[0]
-      await sendCommentNotification(
-        entity.author,
-        senderName,
-        text.trim(),
-        ENTITY_LABEL[entityType],
-        ENTITY_PATH[entityType],
-      )
+      const senderNick = nickname(senderName)
+      await Promise.all([
+        sendCommentNotification(entity.author, senderName, text.trim(), ENTITY_LABEL[entityType], ENTITY_PATH[entityType]),
+        recipientProfile ? supabase.from('notifications').insert({
+          recipient: recipientProfile.id,
+          type: 'comment',
+          entity_type: entityType,
+          entity_id: String(entityId),
+          message: `${senderNick} commented on your ${ENTITY_LABEL[entityType]} 💬`,
+        }) : Promise.resolve(),
+      ])
     }
   }
 

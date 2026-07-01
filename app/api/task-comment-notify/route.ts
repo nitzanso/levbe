@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { sendTaskCommentNotification } from '@/lib/email'
+import { nickname } from '@/lib/nicknames'
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -28,10 +29,25 @@ export async function POST(request: Request) {
     .select('name')
     .eq('id', user.id)
     .maybeSingle()
+  const { data: recipientProfile } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', task.created_by)
+    .maybeSingle()
 
   const commenterName = meProfile?.name ?? user.email?.split('@')[0] ?? 'Your love'
+  const commenterNick = nickname(commenterName)
 
-  await sendTaskCommentNotification(task.created_by, commenterName, taskTitle, commentText.trim())
+  await Promise.all([
+    sendTaskCommentNotification(task.created_by, commenterName, taskTitle, commentText.trim()),
+    recipientProfile ? supabase.from('notifications').insert({
+      recipient: recipientProfile.id,
+      type: 'task_comment',
+      entity_type: 'task',
+      entity_id: taskId,
+      message: `${commenterNick} commented on '${taskTitle}' 💬`,
+    }) : Promise.resolve(),
+  ])
 
   return Response.json({ ok: true })
 }
