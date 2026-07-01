@@ -79,30 +79,36 @@ const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function toDateStr(d: Date) { return d.toISOString().split('T')[0] }
+function toDateStr(d: Date) {
+  // Use local date components — toISOString() returns UTC which shifts the date
+  // by one day in UTC+2/+3 (Germany/Israel) timezones.
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
 
 function fmtMonth(d: Date) {
   return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
 }
 
 function fmtShort(s: string) {
-  return new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+  // Parse date string as LOCAL midnight — new Date("YYYY-MM-DD") parses as UTC
+  // which shifts the displayed date in UTC+2/+3 timezones.
+  const [y, mo, d] = s.split('-').map(Number)
+  return new Date(y, mo - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
 }
 
 function isToday(dateStr: string, today: string) { return dateStr === today }
 
 function getMonthGrid(year: number, month: number): Date[][] {
   const firstDay = new Date(year, month, 1)
-  const dow = firstDay.getDay()
-  const daysBack = dow === 0 ? 6 : dow - 1
-  const gridStart = new Date(firstDay)
-  gridStart.setDate(firstDay.getDate() - daysBack)
+  // Monday=0 … Sunday=6: convert JS getDay() (Sun=0) to Mon-first offset
+  const offset = (firstDay.getDay() + 6) % 7
   return Array.from({ length: 6 }, (_, w) =>
-    Array.from({ length: 7 }, (_, d) => {
-      const dt = new Date(gridStart)
-      dt.setDate(gridStart.getDate() + w * 7 + d)
-      return dt
-    })
+    Array.from({ length: 7 }, (_, d) =>
+      new Date(year, month, 1 - offset + w * 7 + d)
+    )
   )
 }
 
