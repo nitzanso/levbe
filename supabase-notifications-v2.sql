@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS public.notifications (
   created_at  timestamptz DEFAULT now()
 );
 
+-- Required for Supabase realtime row-level filters (recipient=eq.UUID) to work
+ALTER TABLE public.notifications REPLICA IDENTITY FULL;
+
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Only the recipient can read their own notifications

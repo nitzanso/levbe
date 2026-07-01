@@ -113,6 +113,7 @@ export default function SideNav({
   // Notifications
   const [notifOpen, setNotifOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [notifError, setNotifError] = useState<string | null>(null)
 
   // Load collapse preference from localStorage after mount
   useEffect(() => {
@@ -141,7 +142,15 @@ export default function SideNav({
       .eq('recipient', userId)
       .order('created_at', { ascending: false })
       .limit(50)
-      .then(({ data }) => { if (data) setNotifications(data as Notification[]) })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[Levbe] Notification load error:', error.message, '— Run supabase-notifications-v2.sql in Supabase SQL Editor if you haven\'t already.')
+          setNotifError(error.message)
+          return
+        }
+        console.log(`[Levbe] Loaded ${data?.length ?? 0} notifications for user ${userId}`)
+        if (data) setNotifications(data as Notification[])
+      })
 
     const channel = supabase
       .channel(`notifs-${userId}`)
@@ -151,6 +160,7 @@ export default function SideNav({
         table: 'notifications',
         filter: `recipient=eq.${userId}`,
       }, payload => {
+        console.log('[Levbe] Realtime notification received:', payload.new)
         setNotifications(prev => [payload.new as Notification, ...prev])
       })
       .on('postgres_changes', {
@@ -163,7 +173,13 @@ export default function SideNav({
           prev.map(n => n.id === (payload.new as Notification).id ? payload.new as Notification : n)
         )
       })
-      .subscribe()
+      .subscribe((status, err) => {
+        if (err || status === 'CHANNEL_ERROR') {
+          console.error('[Levbe] Realtime subscription error:', status, err)
+        } else {
+          console.log('[Levbe] Realtime subscription status:', status)
+        }
+      })
 
     return () => { supabase.removeChannel(channel) }
   }, [userId])
@@ -455,6 +471,7 @@ export default function SideNav({
         <NotificationPanel
           notifications={notifications}
           userName={userName}
+          notifError={notifError}
           onClose={() => setNotifOpen(false)}
           onNotifClick={handleNotifClick}
           onMarkAll={markAllRead}
@@ -468,10 +485,11 @@ export default function SideNav({
 // ─── Notification Panel ────────────────────────────────────────────────────────
 
 function NotificationPanel({
-  notifications, userName, onClose, onNotifClick, onMarkAll, totalUnread,
+  notifications, userName, notifError, onClose, onNotifClick, onMarkAll, totalUnread,
 }: {
   notifications: Notification[]
   userName: string
+  notifError: string | null
   onClose: () => void
   onNotifClick: (n: Notification) => void
   onMarkAll: () => void
@@ -511,7 +529,12 @@ function NotificationPanel({
 
       {/* List */}
       <div className="flex-1 overflow-y-auto">
-        {notifications.length === 0 ? (
+        {notifError && (
+          <div className="mx-4 mt-4 p-3 rounded-xl text-xs" style={{ background: '#FFF5F5', color: '#B08585', border: '1px solid #FFE5E5' }}>
+            ⚠️ Could not load notifications — check the browser console. If you haven&apos;t yet, run <strong>supabase-notifications-v2.sql</strong> in your Supabase SQL Editor.
+          </div>
+        )}
+        {!notifError && notifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full px-6 text-center pb-12">
             <div className="text-4xl mb-3">🤍</div>
             <p className="text-sm font-semibold mb-1" style={{ color: '#2D1B1B' }}>

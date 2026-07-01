@@ -58,13 +58,17 @@ export async function POST(request: Request) {
       const senderNick = nickname(senderName)
       await Promise.all([
         sendReactionNotification(entity.author, senderName, emoji, entityType, ENTITY_PATH[entityType]),
-        recipientProfile ? supabase.from('notifications').insert({
-          recipient: recipientProfile.id,
-          type: 'reaction',
-          entity_type: entityType,
-          entity_id: String(entityId),
-          message: `${senderNick} reacted ${emoji} to your ${entityType}`,
-        }) : Promise.resolve(),
+        recipientProfile
+          ? supabase.from('notifications').insert({
+              recipient: recipientProfile.id,
+              type: 'reaction',
+              entity_type: entityType,
+              entity_id: String(entityId),
+              message: `${senderNick} reacted ${emoji} to your ${entityType}`,
+            }).then(({ error }) => {
+              if (error) console.error('[Levbe] reaction notification insert failed:', error.message)
+            })
+          : (console.warn('[Levbe] reaction notification skipped — no user row found for email:', entity.author), Promise.resolve()),
       ])
     }
   }

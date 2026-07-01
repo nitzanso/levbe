@@ -70,6 +70,8 @@ export async function POST(request: Request) {
         recipient: partner.id,
         type: 'ping',
         message: `${senderNick} is thinking of you 👋`,
+      }).then(({ error }) => {
+        if (error) console.error('[Levbe] ping notification insert failed:', error.message)
       }),
     ])
     return Response.json({ ok: true })
@@ -86,6 +88,10 @@ export async function POST(request: Request) {
     // Extract entity id from "photo:uuid" style strings
     const entityId = body.relatedEntity ? body.relatedEntity.split(':')[1] ?? null : null
 
+    const logNotifError = (label: string) => ({ error }: { error: any }) => {
+      if (error) console.error(`[Levbe] ${label} notification insert failed:`, error.message)
+    }
+
     if (body.activityType === 'photo') {
       await Promise.all([
         sendPhotoNotification(partner.email, senderName),
@@ -93,7 +99,7 @@ export async function POST(request: Request) {
           recipient: partner.id, type: 'photo',
           entity_type: 'photo', entity_id: entityId,
           message: `${senderNick} sent you a photo 📷`,
-        }),
+        }).then(logNotifError('photo')),
       ])
     } else if (body.activityType === 'note') {
       const isDrawing = body.noteType === 'drawing'
@@ -106,7 +112,7 @@ export async function POST(request: Request) {
           message: isDrawing
             ? `${senderNick} left you a drawing ✏️`
             : `${senderNick} left you a note 💛`,
-        }),
+        }).then(logNotifError('note')),
       ])
     } else if (body.activityType === 'achievement') {
       await Promise.all([
@@ -115,7 +121,7 @@ export async function POST(request: Request) {
           recipient: partner.id, type: 'achievement',
           entity_type: 'achievement', entity_id: entityId,
           message: `${senderNick} shared something they're proud of 🌟`,
-        }),
+        }).then(logNotifError('achievement')),
       ])
     }
 

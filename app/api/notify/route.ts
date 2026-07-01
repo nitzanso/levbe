@@ -24,13 +24,17 @@ export async function POST(request: Request) {
   const message = messages[type]
   if (!message) return Response.json({ error: 'Unknown type' }, { status: 400 })
 
-  await supabase.from('notifications').insert({
+  const { error: notifErr } = await supabase.from('notifications').insert({
     recipient: partner.id,
     type,
     entity_type: entityType ?? null,
     entity_id: entityId ? String(entityId) : null,
     message,
   })
+  if (notifErr) {
+    console.error('[Levbe] notify insert failed:', notifErr.message)
+    return Response.json({ error: notifErr.message }, { status: 500 })
+  }
 
   return Response.json({ ok: true })
 }

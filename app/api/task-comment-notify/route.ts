@@ -40,13 +40,17 @@ export async function POST(request: Request) {
 
   await Promise.all([
     sendTaskCommentNotification(task.created_by, commenterName, taskTitle, commentText.trim()),
-    recipientProfile ? supabase.from('notifications').insert({
-      recipient: recipientProfile.id,
-      type: 'task_comment',
-      entity_type: 'task',
-      entity_id: taskId,
-      message: `${commenterNick} commented on '${taskTitle}' 💬`,
-    }) : Promise.resolve(),
+    recipientProfile
+      ? supabase.from('notifications').insert({
+          recipient: recipientProfile.id,
+          type: 'task_comment',
+          entity_type: 'task',
+          entity_id: taskId,
+          message: `${commenterNick} commented on '${taskTitle}' 💬`,
+        }).then(({ error }) => {
+          if (error) console.error('[Levbe] task_comment notification insert failed:', error.message)
+        })
+      : (console.warn('[Levbe] task_comment notification skipped — no user row found for email:', task.created_by), Promise.resolve()),
   ])
 
   return Response.json({ ok: true })
