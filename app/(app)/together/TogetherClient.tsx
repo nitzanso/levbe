@@ -756,7 +756,7 @@ function TaskDetailModal({ task: initialTask, userId, userName, profiles, allTas
 
             {/* Dependencies */}
             <div className="px-6 py-3" style={{ borderBottom: '1px solid #F5EDE8' }}>
-              <div className="flex flex-wrap items-center gap-2" ref={dropRef}>
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[11px] font-semibold" style={{ color: '#B08585' }}>Blocked by</span>
                 {(task.depends_on ?? []).map(depId => {
                   const dep = allTasks.find(t => t.id === depId)
@@ -778,6 +778,7 @@ function TaskDetailModal({ task: initialTask, userId, userName, profiles, allTas
                     value={depSearch}
                     onChange={e => { setDepSearch(e.target.value); setShowDepDrop(true) }}
                     onFocus={() => setShowDepDrop(true)}
+                    onBlur={() => setTimeout(() => setShowDepDrop(false), 150)}
                     placeholder="+ add dependency"
                     className="text-[11px] outline-none px-2 py-0.5 rounded-lg"
                     style={{ background: '#F5EDE8', color: '#7A5C5C', width: 130 }}
