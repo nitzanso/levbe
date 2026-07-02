@@ -74,6 +74,11 @@ export default function CommentThread({ entityType, entityId, userId, myNick, pa
       if (data.comment) {
         setComments(prev => prev.map(c => c.id === optimistic.id ? data.comment : c))
       }
+    } else {
+      const err = await res.json().catch(() => ({}))
+      console.error('[Levbe] comment failed:', err.error ?? res.status, '— Have you run supabase-reactions.sql?')
+      // Revert optimistic comment
+      setComments(prev => prev.filter(c => c.id !== optimistic.id))
     }
     setSubmitting(false)
   }

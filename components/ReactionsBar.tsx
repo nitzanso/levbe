@@ -54,9 +54,13 @@ export default function ReactionsBar({ entityType, entityId, userId }: Props) {
         setReactions(prev =>
           prev.map(r => r.id.startsWith('temp-') && r.emoji === emoji ? data.reaction : r)
         )
+      } else if (data.action === 'removed') {
+        // already removed optimistically, nothing to do
       }
     } else {
-      // Revert
+      const err = await res.json().catch(() => ({}))
+      console.error('[Levbe] reaction failed:', err.error ?? res.status, '— Have you run supabase-reactions.sql?')
+      // Revert optimistic update
       const { data } = await supabase
         .from('reactions')
         .select('id, author, emoji')
