@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
-  Home, Sparkles, Calendar, Flag, Star,
-  CheckCircle, MessageCircle, PenLine, Camera,
-  ChevronLeft, ChevronRight, LogOut, ListTodo, CalendarDays, Bell, X,
+  Home, BookOpen, MessageCircle, CalendarDays,
+  ChevronLeft, ChevronRight, LogOut, Bell, X,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { nickname, partnerNick } from '@/lib/nicknames'
@@ -27,17 +26,10 @@ interface Notification {
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { href: '/home',       icon: Home,          label: 'Home'            },
-  { href: '/this-week',  icon: Sparkles,      label: 'This Week'       },
-  { href: '/visits',     icon: Calendar,      label: 'Visits'          },
-  { href: '/calendar',   icon: CalendarDays,  label: 'Calendar'        },
-  { href: '/milestones', icon: Flag,          label: 'Milestones'      },
-  { href: '/proud',      icon: Star,          label: 'Proud of Us'     },
-  { href: '/checkin',    icon: CheckCircle,   label: 'Check In'        },
-  { href: '/talk',       icon: MessageCircle, label: 'Talk It Out'     },
-  { href: '/tasks',      icon: ListTodo,      label: 'Tasks'           },
-  { href: '/notes',      icon: PenLine,       label: 'Notes & Doodles' },
-  { href: '/photos',     icon: Camera,        label: 'Photos'          },
+  { href: '/home',      icon: Home,          label: 'Home'        },
+  { href: '/our-days',  icon: BookOpen,      label: 'Our Days'    },
+  { href: '/talk',      icon: MessageCircle, label: 'Talk It Out' },
+  { href: '/together',  icon: CalendarDays,  label: 'Together'    },
 ]
 
 // ─── Colors ───────────────────────────────────────────────────────────────────
@@ -191,10 +183,8 @@ export default function SideNav({
   const tasksUnread  = notifications.filter(n => !n.read && n.type === 'task_comment').length
 
   function badgeCount(href: string): number {
-    if (href === '/photos') return pendingPhotos
-    if (href === '/notes') return notesUnread
-    if (href === '/proud') return proudUnread
-    if (href === '/tasks') return tasksUnread
+    if (href === '/our-days') return pendingPhotos + notesUnread + proudUnread
+    if (href === '/together') return tasksUnread
     return 0
   }
 

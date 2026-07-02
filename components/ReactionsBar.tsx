@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
-export type EntityType = 'photo' | 'note' | 'achievement' | 'checkin'
+export type EntityType = 'photo' | 'note' | 'achievement' | 'checkin' | 'day_entry'
 
 export const EMOJIS = ['🤍', '😍', '🥹', '🔥', '👏', '😂']
 
