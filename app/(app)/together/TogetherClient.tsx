@@ -104,92 +104,317 @@ function isOverdue(s: string | null) {
   return new Date(s).getTime() < Date.now() - 86400000
 }
 
-// ─── Calendar view (mini, inside Together) ────────────────────────────────────
+// ─── Day popup ────────────────────────────────────────────────────────────────
 
-function CalendarView({ anchor, tasks, visits, milestones, recurringEvents, oneOffEvents, moments, onClose }: {
+function DayPopup({ dateStr, tasks, visits, milestones, moments, recurringEvents, oneOffEvents, onClose, onSwitchTab }: {
+  dateStr: string; tasks: Task[]; visits: Visit[]; milestones: Milestone[]
+  moments: Moment[]; recurringEvents: RecurringEvent[]; oneOffEvents: OneOffEvent[]
+  onClose: () => void; onSwitchTab: (t: SubTab) => void
+}) {
+  const [y, mo, d] = dateStr.split('-').map(Number)
+  const dateObj = new Date(y, mo - 1, d)
+  const headerLabel = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })
+  const dow = dateObj.getDay()
+
+  const dayTasks      = tasks.filter(t => t.due_date === dateStr && t.status !== 'done')
+  const dayVisits     = visits.filter(v => v.start_date <= dateStr && (v.end_date ?? v.start_date) >= dateStr)
+  const dayMilestones = milestones.filter(m => m.target_date === dateStr)
+  const dayMoments    = moments.filter(m => m.date_time?.startsWith(dateStr))
+  const dayOneOff     = oneOffEvents.filter(e => e.date === dateStr)
+  const dayRecurring  = recurringEvents.filter(re =>
+    re.recurrence === 'daily' || ((re.recurrence === 'weekly' || re.recurrence === 'custom') && re.days_of_week.includes(dow))
+  )
+  const totalItems = dayTasks.length + dayVisits.length + dayMilestones.length + dayMoments.length + dayOneOff.length + dayRecurring.length
+
+  return (
+    <>
+      <style>{`@keyframes popIn{from{opacity:0;transform:scale(.94) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        style={{ background: 'rgba(45,27,27,0.45)' }}
+        onClick={onClose}>
+        <div className="w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+          style={{ background: '#FFFAF7', animation: 'popIn 0.22s cubic-bezier(0.34,1.56,0.64,1) both' }}
+          onClick={e => e.stopPropagation()}>
+
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-5 pb-4"
+            style={{ borderBottom: '1px solid #F5EDE8' }}>
+            <h2 className="text-base font-bold" style={{ color: '#2D1B1B' }}>{headerLabel}</h2>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: '#F5EDE8' }}>
+              <X size={15} style={{ color: '#7A5C5C' }} />
+            </button>
+          </div>
+
+          {/* Items */}
+          <div className="flex flex-col overflow-y-auto" style={{ maxHeight: '55vh' }}>
+            {totalItems === 0 && (
+              <div className="text-center py-10 px-6">
+                <p className="text-sm font-medium mb-1" style={{ color: '#2D1B1B' }}>Nothing planned for this day ✨</p>
+                <p className="text-xs" style={{ color: '#B08585' }}>Add something to make it count.</p>
+              </div>
+            )}
+
+            {dayTasks.length > 0 && (
+              <div className="px-5 pt-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#FF6B6B' }}>Tasks due</p>
+                {dayTasks.map(t => (
+                  <button key={t.id} onClick={() => onSwitchTab('tasks')}
+                    className="flex items-center gap-3 w-full text-left py-2.5"
+                    style={{ borderBottom: '1px solid #F5EDE8' }}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#FF6B6B' }} />
+                    <p className="flex-1 text-sm truncate" style={{ color: '#2D1B1B' }}>{t.title}</p>
+                    <span className="text-[10px] px-2 py-0.5 rounded-xl flex-shrink-0"
+                      style={{ background: '#FFE5E5', color: '#FF6B6B' }}>{t.status.replace('_', ' ')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {dayVisits.length > 0 && (
+              <div className="px-5 pt-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#5B8DEF' }}>Visits</p>
+                {dayVisits.map(v => (
+                  <button key={v.id} onClick={() => onSwitchTab('visits')}
+                    className="flex items-center gap-3 w-full text-left py-2.5"
+                    style={{ borderBottom: '1px solid #F5EDE8' }}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#5B8DEF' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate" style={{ color: '#2D1B1B' }}>✈️ {v.traveler}</p>
+                      <p className="text-[10px]" style={{ color: '#B08585' }}>
+                        {fmtDate(v.start_date)}{v.end_date && v.end_date !== v.start_date ? ` – ${fmtDate(v.end_date)}` : ''}
+                      </p>
+                    </div>
+                    <span className="text-[10px] px-2 py-0.5 rounded-xl flex-shrink-0"
+                      style={{ background: v.status === 'confirmed' ? '#E0F7F5' : '#FFF8D6', color: v.status === 'confirmed' ? '#2BA99C' : '#B59100' }}>
+                      {v.status}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {dayMilestones.length > 0 && (
+              <div className="px-5 pt-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#A078C8' }}>Milestones</p>
+                {dayMilestones.map(m => (
+                  <button key={m.id} onClick={() => onSwitchTab('milestones')}
+                    className="flex items-center gap-3 w-full text-left py-2.5"
+                    style={{ borderBottom: '1px solid #F5EDE8' }}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#A078C8' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate" style={{ color: '#2D1B1B' }}>{m.title}</p>
+                      <p className="text-[10px]" style={{ color: '#B08585' }}>
+                        {TRACK_META[m.track]?.emoji} {TRACK_META[m.track]?.label}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {dayMoments.length > 0 && (
+              <div className="px-5 pt-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#E5A800' }}>Date night</p>
+                {dayMoments.map(m => (
+                  <div key={m.id} className="flex items-center gap-3 py-2.5"
+                    style={{ borderBottom: '1px solid #F5EDE8' }}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#E5A800' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm" style={{ color: '#2D1B1B' }}>🌙 {m.idea_text || 'Date night'}</p>
+                      {m.date_time && (
+                        <p className="text-[10px]" style={{ color: '#B08585' }}>
+                          {new Date(m.date_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {dayOneOff.length > 0 && (
+              <div className="px-5 pt-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#7A5C5C' }}>Events</p>
+                {dayOneOff.map(e => (
+                  <div key={e.id} className="flex items-center gap-3 py-2.5"
+                    style={{ borderBottom: '1px solid #F5EDE8' }}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm truncate" style={{ color: '#2D1B1B' }}>{e.title}</p>
+                      {e.time && <p className="text-[10px]" style={{ color: '#B08585' }}>{e.time}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {dayRecurring.length > 0 && (
+              <div className="px-5 pt-3 pb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide mb-1" style={{ color: '#7A5C5C' }}>Recurring</p>
+                {dayRecurring.map(re => (
+                  <div key={re.id} className="flex items-center gap-3 py-2.5"
+                    style={{ borderBottom: '1px solid #F5EDE8' }}>
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: re.color }} />
+                    <p className="flex-1 text-sm truncate" style={{ color: '#2D1B1B' }}>{re.title}</p>
+                    {re.time && <p className="text-[10px] flex-shrink-0" style={{ color: '#B08585' }}>{re.time}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="px-5 pb-5 pt-3" style={{ borderTop: '1px solid #F5EDE8' }}>
+            <button onClick={onClose}
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-white"
+              style={{ background: '#FF6B6B' }}>
+              + Add something to this day
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ─── Calendar view ────────────────────────────────────────────────────────────
+
+function CalendarView({ anchor, tasks, visits, milestones, recurringEvents, oneOffEvents, moments, onClose, onSwitchTab }: {
   anchor: Date; tasks: Task[]; visits: Visit[]; milestones: Milestone[]
   recurringEvents: RecurringEvent[]; oneOffEvents: OneOffEvent[]; moments: Moment[]
-  onClose: () => void
+  onClose: () => void; onSwitchTab: (t: SubTab) => void
 }) {
   const [month, setMonth] = useState(() => new Date(anchor.getFullYear(), anchor.getMonth(), 1))
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const today = localStr(new Date())
   const grid = useMemo(() => getMonthGrid(month.getFullYear(), month.getMonth()), [month])
   const monthPfx = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}`
 
-  type Dot = { color: string; label: string }
-  function dotsForDay(d: string): Dot[] {
-    const dots: Dot[] = []
+  type Pill = { color: string; bg: string; label: string }
+
+  function pillsForDay(d: string): Pill[] {
+    const pills: Pill[] = []
+    const parts = d.split('-').map(Number)
+    const dow = new Date(parts[0], parts[1] - 1, parts[2]).getDay()
+
     tasks.filter(t => t.due_date === d && t.status !== 'done').forEach(t =>
-      dots.push({ color: '#FF6B6B', label: t.title }))
+      pills.push({ color: '#C94040', bg: '#FFE5E5', label: t.title }))
     visits.filter(v => v.start_date <= d && (v.end_date ?? v.start_date) >= d).forEach(v =>
-      dots.push({ color: '#5B8DEF', label: 'Visit' }))
+      pills.push({ color: '#4A5FA5', bg: '#E8EDFF', label: `✈️ ${v.traveler}` }))
     milestones.filter(m => m.target_date === d).forEach(m =>
-      dots.push({ color: '#A078C8', label: m.title }))
-    recurringEvents.filter(re => {
-      const dow = new Date(...(d.split('-').map(Number) as [number, number, number])).getDay()
-      return re.recurrence === 'daily' || ((re.recurrence === 'weekly' || re.recurrence === 'custom') && re.days_of_week.includes(dow))
-    }).forEach(re => dots.push({ color: re.color, label: re.title }))
-    oneOffEvents.filter(e => e.date === d).forEach(e => dots.push({ color: e.color, label: e.title }))
-    moments.filter(m => m.date_time && m.date_time.startsWith(d)).forEach(() =>
-      dots.push({ color: '#E5A800', label: 'Date night' }))
-    return dots
+      pills.push({ color: '#7B55A5', bg: '#F0E8FF', label: m.title }))
+    recurringEvents.filter(re =>
+      re.recurrence === 'daily' || ((re.recurrence === 'weekly' || re.recurrence === 'custom') && re.days_of_week.includes(dow))
+    ).forEach(re => pills.push({ color: re.color, bg: re.color + '28', label: re.title }))
+    oneOffEvents.filter(e => e.date === d).forEach(e =>
+      pills.push({ color: e.color, bg: e.color + '28', label: e.title }))
+    moments.filter(m => m.date_time?.startsWith(d)).forEach(() =>
+      pills.push({ color: '#B59100', bg: '#FFF8D6', label: '🌙 Date night' }))
+    return pills
   }
 
   return (
-    <div className="flex flex-col" style={{ background: '#FFFAF7', minHeight: 0 }}>
-      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0" style={{ borderBottom: '1px solid #F5EDE8' }}>
-        <div className="flex items-center gap-2">
+    <div className="flex flex-col h-full" style={{ background: '#FFFAF7' }}>
+      {/* Nav bar */}
+      <div className="flex items-center justify-between px-4 py-3 flex-shrink-0"
+        style={{ borderBottom: '1px solid #F5EDE8' }}>
+        <div className="flex items-center gap-3">
           <button onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
             className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#F5EDE8' }}>
-            <ChevronLeft size={15} style={{ color: '#7A5C5C' }} />
+            <ChevronLeft size={16} style={{ color: '#7A5C5C' }} />
           </button>
-          <span className="font-bold text-sm" style={{ color: '#2D1B1B', minWidth: 140, textAlign: 'center', display: 'inline-block' }}>
+          <span className="font-bold text-sm" style={{ color: '#2D1B1B', minWidth: 156, textAlign: 'center', display: 'inline-block' }}>
             {month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}
           </span>
           <button onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
             className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: '#F5EDE8' }}>
-            <ChevronRight size={15} style={{ color: '#7A5C5C' }} />
+            <ChevronRight size={16} style={{ color: '#7A5C5C' }} />
           </button>
         </div>
         <button onClick={onClose} className="px-3 py-1.5 rounded-xl text-xs font-semibold"
           style={{ background: '#F5EDE8', color: '#7A5C5C' }}>Board view</button>
       </div>
-      <div className="px-3 pt-2 flex-1 overflow-auto">
+
+      {/* Grid */}
+      <div className="flex-1 overflow-y-auto px-2 pb-4 pt-1">
+        {/* Weekday headers */}
         <div className="grid grid-cols-7 mb-1">
-          {WEEKDAYS.map(d => (
-            <div key={d} className="text-center py-1 text-[10px] font-bold uppercase tracking-wider" style={{ color: '#B08585' }}>
-              {d.charAt(0)}
-            </div>
+          {WEEKDAYS.map(wd => (
+            <div key={wd} className="text-center py-1.5 text-[11px] font-bold uppercase tracking-wide"
+              style={{ color: '#B08585' }}>{wd}</div>
           ))}
         </div>
-        <div className="grid gap-px" style={{ gridTemplateRows: 'repeat(6, auto)' }}>
+
+        {/* Weeks */}
+        <div className="flex flex-col gap-0.5">
           {grid.map((week, wi) => (
-            <div key={wi} className="grid grid-cols-7 gap-px">
+            <div key={wi} className="grid grid-cols-7 gap-0.5">
               {week.map((day, di) => {
                 const d = localStr(day)
                 const inMonth = d.startsWith(monthPfx)
                 const isToday = d === today
-                const dots = dotsForDay(d)
+                const pills = pillsForDay(d)
+                const VISIBLE = 2
                 return (
-                  <div key={di} className="flex flex-col items-center py-1.5 rounded-xl"
-                    style={{ opacity: inMonth ? 1 : 0.25, background: isToday ? '#FFE5E5' : 'transparent' }}>
-                    <span className="text-xs mb-1 leading-none"
-                      style={{ color: isToday ? '#FF6B6B' : '#2D1B1B', fontWeight: isToday ? 700 : 500 }}>
-                      {day.getDate()}
-                    </span>
-                    <div className="flex gap-0.5 flex-wrap justify-center">
-                      {dots.slice(0, 3).map((dot, i) => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full" style={{ background: dot.color }} />
-                      ))}
-                      {dots.length > 3 && <span className="text-[7px]" style={{ color: '#B08585' }}>+{dots.length - 3}</span>}
+                  <button key={di}
+                    onClick={() => setSelectedDay(d)}
+                    className="flex flex-col rounded-xl p-1 text-left transition-colors"
+                    style={{
+                      minHeight: 80,
+                      opacity: inMonth ? 1 : 0.28,
+                      background: 'transparent',
+                    }}
+                    onMouseEnter={e => { if (inMonth) (e.currentTarget as HTMLElement).style.background = '#F5EDE8' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent' }}>
+                    {/* Day number */}
+                    <div className="flex mb-1">
+                      {isToday ? (
+                        <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                          style={{ background: '#FF6B6B' }}>
+                          {day.getDate()}
+                        </span>
+                      ) : (
+                        <span className="w-6 h-6 flex items-center justify-center text-xs font-medium flex-shrink-0"
+                          style={{ color: '#2D1B1B' }}>
+                          {day.getDate()}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                    {/* Pills */}
+                    <div className="flex flex-col gap-0.5 w-full flex-1">
+                      {pills.slice(0, VISIBLE).map((p, i) => (
+                        <div key={i} className="w-full rounded-md px-1 py-0.5 overflow-hidden"
+                          style={{ background: p.bg }}>
+                          <p className="text-[9px] font-semibold leading-tight truncate"
+                            style={{ color: p.color }}>{p.label}</p>
+                        </div>
+                      ))}
+                      {pills.length > VISIBLE && (
+                        <p className="text-[9px] font-medium pl-0.5" style={{ color: '#B08585' }}>
+                          +{pills.length - VISIBLE} more
+                        </p>
+                      )}
+                    </div>
+                  </button>
                 )
               })}
             </div>
           ))}
         </div>
       </div>
+
+      {/* Day popup */}
+      {selectedDay && (
+        <DayPopup
+          dateStr={selectedDay}
+          tasks={tasks} visits={visits} milestones={milestones}
+          moments={moments} recurringEvents={recurringEvents} oneOffEvents={oneOffEvents}
+          onClose={() => setSelectedDay(null)}
+          onSwitchTab={(t) => { setSelectedDay(null); onSwitchTab(t) }}
+        />
+      )}
     </div>
   )
 }
@@ -744,6 +969,7 @@ export default function TogetherClient({
             anchor={new Date()} tasks={tasks} visits={visits} milestones={milestones}
             recurringEvents={recurringEvents} oneOffEvents={oneOffEvents} moments={moments}
             onClose={() => setCalOpen(false)}
+            onSwitchTab={(t) => { setTab(t); setCalOpen(false) }}
           />
         ) : tab === 'tasks' ? (
           <TasksView tasks={tasks} userId={userId} userName={userName} profiles={profiles} />
