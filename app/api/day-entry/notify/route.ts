@@ -1,13 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { nickname } from '@/lib/nicknames'
 
-const TYPE_MESSAGE: Record<string, string> = {
-  highlight: (nick: string) => `${nick} shared a highlight from their day ✨`,
-  photo:     (nick: string) => `${nick} added a photo to today 📷`,
-  doodle:    (nick: string) => `${nick} left you a doodle 🎨`,
-  proud:     (nick: string) => `${nick} shared something they're proud of 🌟`,
-  mood:      (nick: string) => `${nick} checked in with how they're feeling 🤍`,
-} as unknown as Record<string, (nick: string) => string>
+const TYPE_MESSAGE: Record<string, (nick: string) => string> = {
+  highlight: (nick) => `${nick} shared a highlight from their day ✨`,
+  photo:     (nick) => `${nick} added a photo to today 📷`,
+  doodle:    (nick) => `${nick} left you a doodle 🎨`,
+  proud:     (nick) => `${nick} shared something they're proud of 🌟`,
+  mood:      (nick) => `${nick} checked in with how they're feeling 🤍`,
+}
 
 export async function POST(request: Request) {
   const supabase = await createClient()

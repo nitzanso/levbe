@@ -55,7 +55,7 @@ function notifPath(n: Notification): string {
   const MAP: Record<string, string> = {
     photo: '/our-days', drawing: '/our-days', note: '/our-days',
     achievement: '/our-days', day_entry: '/our-days',
-    task_comment: '/together', date_night: '/together',
+    task_comment: '/together', date_night: '/together', task_assigned: '/together',
     ping: '/home', dream_added: '/home', daily_nudge: '/home',
   }
   return MAP[n.type] ?? '/home'
@@ -64,7 +64,7 @@ function notifPath(n: Notification): string {
 function notifIcon(type: string): string {
   const ICONS: Record<string, string> = {
     photo: '📷', drawing: '✏️', note: '💛', achievement: '🌟',
-    day_entry: '📖', date_night: '🌙',
+    day_entry: '📖', date_night: '🌙', task_assigned: '✅',
     comment: '💬', reaction: '👍', ping: '👋',
     task_comment: '💬', dream_added: '🌍', daily_nudge: '🌙',
   }
@@ -184,7 +184,7 @@ export default function SideNav({
   const notesUnread      = notifications.filter(n => !n.read && (n.type === 'note' || n.type === 'drawing')).length
   const proudUnread      = notifications.filter(n => !n.read && n.type === 'achievement').length
   const dayEntryUnread   = notifications.filter(n => !n.read && n.type === 'day_entry').length
-  const tasksUnread      = notifications.filter(n => !n.read && n.type === 'task_comment').length
+  const tasksUnread      = notifications.filter(n => !n.read && (n.type === 'task_comment' || n.type === 'task_assigned')).length
   const dateNightUnread  = notifications.filter(n => !n.read && n.type === 'date_night').length
 
   function badgeCount(href: string): number {
