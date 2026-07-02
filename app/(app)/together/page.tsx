@@ -17,6 +17,7 @@ export default async function TogetherPage() {
     { data: moments },
     { data: recurringEvents },
     { data: oneOffEvents },
+    { data: ideaBank },
   ] = await Promise.all([
     supabase.from('users').select('name, email, avatar_color').eq('id', user.id).maybeSingle(),
     supabase.from('users').select('id, name, email, avatar_color'),
@@ -27,6 +28,7 @@ export default async function TogetherPage() {
     supabase.from('weekly_moments').select('*').order('week_start_date', { ascending: false }),
     supabase.from('recurring_events').select('*').eq('active', true),
     supabase.from('one_off_events').select('*').order('date', { ascending: true }),
+    supabase.from('idea_bank').select('id, idea_text, category'),
   ])
 
   return (
@@ -43,6 +45,7 @@ export default async function TogetherPage() {
       moments={moments ?? []}
       recurringEvents={recurringEvents ?? []}
       oneOffEvents={oneOffEvents ?? []}
+      ideaBank={ideaBank ?? []}
     />
   )
 }

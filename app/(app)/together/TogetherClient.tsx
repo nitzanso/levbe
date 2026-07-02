@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { nickname, partnerNick } from '@/lib/nicknames'
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, X, Check, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, X, Check, Trash2, Shuffle, Pencil } from 'lucide-react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,12 +39,16 @@ interface RecurringEvent {
 interface OneOffEvent {
   id: string; title: string; date: string; time: string | null; color: string
 }
+interface IdeaItem {
+  id: string; idea_text: string; category: string
+}
 
 interface Props {
   userId: string; userEmail: string; userName: string; userColor: string
   profiles: Profile[]; tasks: Task[]; visits: Visit[]
   milestones: Milestone[]; dreams: Dream[]; moments: Moment[]
   recurringEvents: RecurringEvent[]; oneOffEvents: OneOffEvent[]
+  ideaBank: IdeaItem[]
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -810,6 +814,149 @@ function DreamsView({ dreams: initial, userId, userName }: { dreams: Dream[]; us
   )
 }
 
+// ─── Date Night Modal ─────────────────────────────────────────────────────────
+
+function DateNightModal({ weekStart, userEmail, ideaBank, onClose, onSaved }: {
+  weekStart: string; userEmail: string; ideaBank: IdeaItem[]
+  onClose: () => void; onSaved: (moment: Moment) => void
+}) {
+  const supabase = createClient()
+  const today = localStr(new Date())
+
+  const weekDays = useMemo(() => {
+    const [y, m, d] = weekStart.split('-').map(Number)
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(y, m - 1, d + i)
+      return {
+        dateStr: localStr(day),
+        short: day.toLocaleDateString('en-GB', { weekday: 'short' }),
+        num: day.getDate(),
+        past: localStr(day) < today,
+      }
+    })
+  }, [weekStart, today])
+
+  const defaultDay = weekDays.find(d => !d.past)?.dateStr ?? weekDays[6].dateStr
+  const [selectedDay, setSelectedDay] = useState(defaultDay)
+  const [time, setTime] = useState('20:00')
+  const [idea, setIdea] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  function surpriseMe() {
+    if (ideaBank.length === 0) return
+    const r = ideaBank[Math.floor(Math.random() * ideaBank.length)]
+    setIdea(r.idea_text)
+  }
+
+  async function submit() {
+    setLoading(true)
+    const dateTime = `${selectedDay}T${time}:00`
+    const { data, error } = await supabase.from('weekly_moments').insert({
+      week_start_date: weekStart,
+      idea_text: idea.trim() || null,
+      proposed_by: userEmail,
+      source: 'freeform',
+      confirmed: true,
+      date_time: dateTime,
+    }).select().single()
+    if (!error && data) {
+      onSaved(data as Moment)
+      fetch('/api/date-night/notify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ momentId: data.id }),
+      }).catch(() => {})
+    }
+    setLoading(false)
+  }
+
+  return (
+    <>
+      <style>{`@keyframes slideUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}`}</style>
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        style={{ background: 'rgba(45,27,27,0.45)' }}
+        onClick={onClose}>
+        <div className="w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+          style={{ background: '#FFFAF7', animation: 'slideUp 0.25s cubic-bezier(0.34,1.56,0.64,1) both' }}
+          onClick={e => e.stopPropagation()}>
+
+          <div className="flex items-center justify-between px-5 pt-5 pb-4"
+            style={{ borderBottom: '1px solid #F5EDE8' }}>
+            <h2 className="text-base font-bold" style={{ color: '#2D1B1B' }}>Plan this week&apos;s date night 🌙</h2>
+            <button onClick={onClose}
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: '#F5EDE8' }}>
+              <X size={15} style={{ color: '#7A5C5C' }} />
+            </button>
+          </div>
+
+          <div className="px-5 py-4 flex flex-col gap-4">
+            {/* Day picker */}
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: '#7A5C5C' }}>Which day?</p>
+              <div className="flex gap-1">
+                {weekDays.map(wd => (
+                  <button key={wd.dateStr}
+                    onClick={() => !wd.past && setSelectedDay(wd.dateStr)}
+                    disabled={wd.past}
+                    className="flex-1 flex flex-col items-center py-2.5 rounded-2xl transition-all"
+                    style={{
+                      background: selectedDay === wd.dateStr ? '#E5A800' : '#F5EDE8',
+                      color: selectedDay === wd.dateStr ? '#FFFFFF' : wd.past ? '#C4A8A8' : '#7A5C5C',
+                      opacity: wd.past ? 0.4 : 1,
+                    }}>
+                    <span className="text-[9px] font-bold uppercase">{wd.short}</span>
+                    <span className="text-sm font-bold leading-tight mt-0.5">{wd.num}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Time */}
+            <div>
+              <p className="text-xs font-bold mb-2" style={{ color: '#7A5C5C' }}>What time?</p>
+              <input type="time" value={time} onChange={e => setTime(e.target.value)}
+                className="w-full text-sm rounded-2xl px-4 py-2.5 outline-none"
+                style={{ background: '#F5EDE8', color: '#2D1B1B' }} />
+            </div>
+
+            {/* Idea */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold" style={{ color: '#7A5C5C' }}>Idea (optional)</p>
+                {ideaBank.length > 0 && (
+                  <button onClick={surpriseMe}
+                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-xl"
+                    style={{ background: '#FFF8D6', color: '#B59100' }}>
+                    <Shuffle size={11} /> Surprise me 🎲
+                  </button>
+                )}
+              </div>
+              <input value={idea} onChange={e => setIdea(e.target.value)}
+                placeholder="What are you thinking?"
+                className="w-full text-sm rounded-2xl px-4 py-2.5 outline-none"
+                style={{ background: '#F5EDE8', color: '#2D1B1B' }} />
+            </div>
+          </div>
+
+          <div className="px-5 pb-6 pt-3 flex flex-col gap-2" style={{ borderTop: '1px solid #F5EDE8' }}>
+            <button onClick={submit} disabled={loading}
+              className="w-full py-3 rounded-2xl text-sm font-semibold text-white"
+              style={{ background: '#E5A800', opacity: loading ? 0.6 : 1 }}>
+              {loading ? 'Adding…' : 'Add to our calendar 🌙'}
+            </button>
+            <button onClick={onClose}
+              className="w-full py-2 rounded-2xl text-sm"
+              style={{ background: '#F5EDE8', color: '#7A5C5C' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 // ─── All items (unified list) ──────────────────────────────────────────────────
 
 function AllView({ tasks, visits, milestones, dreams, userId, userName, onTabChange }: {
@@ -869,8 +1016,8 @@ function AllView({ tasks, visits, milestones, dreams, userId, userName, onTabCha
 
 export default function TogetherClient({
   userId, userEmail, userName, userColor,
-  profiles, tasks, visits, milestones, dreams, moments,
-  recurringEvents, oneOffEvents,
+  profiles, tasks, visits, milestones, dreams, moments: initialMoments,
+  recurringEvents, oneOffEvents, ideaBank,
 }: Props) {
   const myNick = nickname(userName)
   const pNick = partnerNick(userName)
@@ -878,21 +1025,22 @@ export default function TogetherClient({
 
   const [tab, setTab] = useState<SubTab>('all')
   const [calOpen, setCalOpen] = useState(false)
+  const [moments, setMoments] = useState(initialMoments)
+  const [planModalOpen, setPlanModalOpen] = useState(false)
 
-  // Date night banner: show on Monday if no confirmed moment this week
+  // Date night state for this week
   const today = new Date()
-  const isMonday = today.getDay() === 1
   const weekStart = (() => {
     const d = new Date(today); d.setDate(today.getDate() - ((today.getDay() + 6) % 7)); return localStr(d)
   })()
   const weekEnd = (() => {
     const d = new Date(today); d.setDate(today.getDate() + (7 - (today.getDay() + 6) % 7 - 1)); return localStr(d)
   })()
-  const hasDateNightThisWeek = moments.some(m =>
+  const thisWeekMoment = moments.find(m =>
     m.confirmed && m.date_time && m.date_time.slice(0, 10) >= weekStart && m.date_time.slice(0, 10) <= weekEnd
-  )
-  const [dateBannerDismissed, setDateBannerDismissed] = useState(false)
-  const showDateBanner = !dateBannerDismissed && !hasDateNightThisWeek && today.getDay() >= 1
+  ) ?? null
+  const [bannerDismissed, setBannerDismissed] = useState(false)
+  const showPlanBanner = !bannerDismissed && !thisWeekMoment
 
   const SUBTABS: { id: SubTab; label: string }[] = [
     { id: 'all',        label: 'All'        },
@@ -921,22 +1069,23 @@ export default function TogetherClient({
           </button>
         </div>
 
-        {/* Date night banner */}
-        {showDateBanner && (
+        {/* Date night: no plan yet */}
+        {showPlanBanner && (
           <div className="flex items-center justify-between px-4 py-3 rounded-2xl mb-4"
             style={{ background: '#FFF8D6', border: '1px solid #FFD93D40' }}>
             <div>
               <p className="text-sm font-semibold" style={{ color: '#2D1B1B' }}>
-                🌙 No date night planned this week yet
+                🌙 No date night this week yet
               </p>
               <p className="text-xs mt-0.5" style={{ color: '#7A5C5C' }}>When are you two getting together?</p>
             </div>
             <div className="flex items-center gap-1 ml-3 flex-shrink-0">
-              <button className="text-xs font-semibold px-2.5 py-1.5 rounded-xl"
+              <button onClick={() => setPlanModalOpen(true)}
+                className="text-xs font-semibold px-2.5 py-1.5 rounded-xl"
                 style={{ background: '#E5A800', color: '#FFFFFF' }}>
                 Plan it
               </button>
-              <button onClick={() => setDateBannerDismissed(true)}
+              <button onClick={() => setBannerDismissed(true)}
                 className="w-6 h-6 rounded-full flex items-center justify-center"
                 style={{ background: '#F5EDE8' }}>
                 <X size={12} style={{ color: '#7A5C5C' }} />
@@ -944,6 +1093,30 @@ export default function TogetherClient({
             </div>
           </div>
         )}
+        {/* Date night: confirmed */}
+        {thisWeekMoment && (() => {
+          const dt = thisWeekMoment.date_time ? new Date(thisWeekMoment.date_time) : null
+          const dayLabel = dt ? dt.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' }) : ''
+          const timeLabel = dt ? dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+          return (
+            <div className="flex items-center justify-between px-4 py-3 rounded-2xl mb-4"
+              style={{ background: '#FFF8D6', border: '1px solid #FFD93D40' }}>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold" style={{ color: '#2D1B1B' }}>
+                  🌙 Date night: {dayLabel}{timeLabel ? ` at ${timeLabel}` : ''}
+                </p>
+                {thisWeekMoment.idea_text && (
+                  <p className="text-xs mt-0.5 truncate" style={{ color: '#7A5C5C' }}>{thisWeekMoment.idea_text}</p>
+                )}
+              </div>
+              <button onClick={() => setPlanModalOpen(true)}
+                className="ml-3 flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
+                style={{ background: '#F5EDE8' }} title="Edit">
+                <Pencil size={12} style={{ color: '#7A5C5C' }} />
+              </button>
+            </div>
+          )
+        })()}
 
         {/* Subtab pills */}
         {!calOpen && (
@@ -984,6 +1157,20 @@ export default function TogetherClient({
             userId={userId} userName={userName} onTabChange={setTab} />
         )}
       </div>
+
+      {/* Date night planner modal */}
+      {planModalOpen && (
+        <DateNightModal
+          weekStart={weekStart}
+          userEmail={userEmail}
+          ideaBank={ideaBank}
+          onClose={() => setPlanModalOpen(false)}
+          onSaved={(newMoment) => {
+            setMoments(prev => [newMoment, ...prev])
+            setPlanModalOpen(false)
+          }}
+        />
+      )}
     </div>
   )
 }

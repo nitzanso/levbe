@@ -143,6 +143,16 @@ export async function sendTaskCommentNotification(to: string, commenterName: str
   await send(to, `${commenterName} commented on your task 💬`, html)
 }
 
+export async function sendDateNightNotification(to: string, plannerName: string, day: string, time: string, idea?: string | null) {
+  const ideaLine = idea ? `<br><br>Their idea: <em>${idea}</em> ✨` : ''
+  const html = emailHtml(
+    `<strong>${plannerName}</strong> planned your date night this week — <strong>${day} at ${time}</strong> 🌙${ideaLine}<br><br>Check it out on your calendar.`,
+    'Open Together →',
+    `${APP_URL}/together`,
+  )
+  await send(to, `${plannerName} planned your date night 🌙`, html)
+}
+
 export async function sendDailyNudge(to: string, partnerName: string) {
   const copy = NUDGE_COPY[Math.floor(Math.random() * NUDGE_COPY.length)](partnerName)
   const html = emailHtml(
