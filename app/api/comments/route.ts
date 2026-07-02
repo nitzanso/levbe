@@ -87,7 +87,7 @@ export async function POST(request: Request) {
           type: 'comment',
           entity_type: entityType,
           entity_id: String(entityId),
-          body: `${senderNick} commented on your ${label} 💬`,
+          message: `${senderNick} commented on your ${label} 💬`,
         }).then(({ error }) => {
           if (error) console.error('[Levbe] comment notification insert failed:', error.message)
         }),

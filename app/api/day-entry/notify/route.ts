@@ -1,20 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { nickname } from '@/lib/nicknames'
 
-const TYPE_COPY: Record<string, string> = {
-  highlight: 'shared a highlight',
-  photo:     'added a photo',
-  doodle:    'drew something',
-  proud:     'added something they\'re proud of',
-  mood:      'checked in with a mood',
-}
-const TYPE_EMOJI: Record<string, string> = {
-  highlight: '📝',
-  photo:     '📷',
-  doodle:    '✏️',
-  proud:     '🌟',
-  mood:      '😊',
-}
+const TYPE_MESSAGE: Record<string, string> = {
+  highlight: (nick: string) => `${nick} shared a highlight from their day ✨`,
+  photo:     (nick: string) => `${nick} added a photo to today 📷`,
+  doodle:    (nick: string) => `${nick} left you a doodle 🎨`,
+  proud:     (nick: string) => `${nick} shared something they're proud of 🌟`,
+  mood:      (nick: string) => `${nick} checked in with how they're feeling 🤍`,
+} as unknown as Record<string, (nick: string) => string>
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -26,20 +19,20 @@ export async function POST(request: Request) {
   const { data: users } = await supabase.from('users').select('id, email, name')
   if (!users || users.length < 2) return Response.json({ error: 'Users not found' }, { status: 500 })
 
-  const me = users.find(u => u.id === user.id)
-  const partner = users.find(u => u.id !== user.id)
+  const me = users.find((u: any) => u.id === user.id)
+  const partner = users.find((u: any) => u.id !== user.id)
   if (!me || !partner) return Response.json({ error: 'Partner not found' }, { status: 500 })
 
   const myNick = nickname(me.name)
-  const verb = TYPE_COPY[type] ?? 'added something'
-  const emoji = TYPE_EMOJI[type] ?? '📝'
-  const body = `${myNick} ${verb} to today ${emoji}`
+  const msgFn = TYPE_MESSAGE[type]
+  const message = msgFn ? msgFn(myNick) : `${myNick} added something to today 📖`
 
   const { error } = await supabase.from('notifications').insert({
-    recipient: partner.id,
-    type: 'day_entry',
-    body,
-    related_id: entryId,
+    recipient:   partner.id,
+    type:        'day_entry',
+    entity_type: 'day_entry',
+    entity_id:   entryId,
+    message,
   })
   if (error) {
     console.error('[Levbe] day-entry notify insert failed:', error.message)

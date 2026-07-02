@@ -36,10 +36,11 @@ export async function POST(request: Request) {
   const body = `${myNick} planned your date night — ${dayLabel} at ${timeLabel} 🌙${moment.idea_text ? ` · ${moment.idea_text}` : ''}`
 
   const { error: notifErr } = await supabase.from('notifications').insert({
-    recipient: partner.id,
-    type: 'date_night',
-    body,
-    related_id: momentId,
+    recipient:   partner.id,
+    type:        'date_night',
+    entity_type: 'date_night',
+    entity_id:   momentId,
+    message:     body,
   })
   if (notifErr) console.error('[Levbe] date-night notify insert failed:', notifErr.message)
 

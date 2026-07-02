@@ -101,7 +101,7 @@ export async function POST(request: Request) {
           type: 'reaction',
           entity_type: entityType,
           entity_id: String(entityId),
-          body: `${senderNick} reacted ${emoji}`,
+          message: `${senderNick} reacted ${emoji}`,
         }).then(({ error }) => {
           if (error) console.error('[Levbe] reaction notification insert failed:', error.message)
         }),

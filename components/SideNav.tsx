@@ -45,15 +45,17 @@ const MUTED_COLOR  = '#B08585'
 
 function notifPath(n: Notification): string {
   if (n.type === 'comment' || n.type === 'reaction') {
-    if (n.entity_type === 'photo') return '/photos'
-    if (n.entity_type === 'note') return '/notes'
-    if (n.entity_type === 'achievement') return '/proud'
-    if (n.entity_type === 'task') return '/tasks'
+    if (n.entity_type === 'photo') return '/our-days'
+    if (n.entity_type === 'note') return '/our-days'
+    if (n.entity_type === 'achievement') return '/our-days'
+    if (n.entity_type === 'day_entry') return '/our-days'
+    if (n.entity_type === 'task') return '/together'
     return '/home'
   }
   const MAP: Record<string, string> = {
-    photo: '/photos', drawing: '/notes', note: '/notes',
-    achievement: '/proud', task_comment: '/tasks',
+    photo: '/our-days', drawing: '/our-days', note: '/our-days',
+    achievement: '/our-days', day_entry: '/our-days',
+    task_comment: '/together', date_night: '/together',
     ping: '/home', dream_added: '/home', daily_nudge: '/home',
   }
   return MAP[n.type] ?? '/home'
@@ -62,6 +64,7 @@ function notifPath(n: Notification): string {
 function notifIcon(type: string): string {
   const ICONS: Record<string, string> = {
     photo: '📷', drawing: '✏️', note: '💛', achievement: '🌟',
+    day_entry: '📖', date_night: '🌙',
     comment: '💬', reaction: '👍', ping: '👋',
     task_comment: '💬', dream_added: '🌍', daily_nudge: '🌙',
   }
@@ -177,14 +180,16 @@ export default function SideNav({
   }, [userId])
 
   // Derived notification counts
-  const totalUnread  = notifications.filter(n => !n.read).length
-  const notesUnread  = notifications.filter(n => !n.read && (n.type === 'note' || n.type === 'drawing')).length
-  const proudUnread  = notifications.filter(n => !n.read && n.type === 'achievement').length
-  const tasksUnread  = notifications.filter(n => !n.read && n.type === 'task_comment').length
+  const totalUnread      = notifications.filter(n => !n.read).length
+  const notesUnread      = notifications.filter(n => !n.read && (n.type === 'note' || n.type === 'drawing')).length
+  const proudUnread      = notifications.filter(n => !n.read && n.type === 'achievement').length
+  const dayEntryUnread   = notifications.filter(n => !n.read && n.type === 'day_entry').length
+  const tasksUnread      = notifications.filter(n => !n.read && n.type === 'task_comment').length
+  const dateNightUnread  = notifications.filter(n => !n.read && n.type === 'date_night').length
 
   function badgeCount(href: string): number {
-    if (href === '/our-days') return pendingPhotos + notesUnread + proudUnread
-    if (href === '/together') return tasksUnread
+    if (href === '/our-days') return pendingPhotos + notesUnread + proudUnread + dayEntryUnread
+    if (href === '/together') return tasksUnread + dateNightUnread
     return 0
   }
 
