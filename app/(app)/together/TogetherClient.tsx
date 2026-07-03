@@ -944,9 +944,10 @@ function TasksView({ tasks: initial, userId, userName, profiles }: {
     if (!newTitle.trim()) return
     const { data, error } = await supabase.from('tasks').insert({
       title: newTitle.trim(), status: newStatus,
-      created_by: userName, tags: [], depends_on: [], priority: 'medium',
+      created_by: userName, tags: [], depends_on: [],
     }).select().single()
-    if (!error && data) { setTasks(p => [data as Task, ...p]); setNewTitle(''); setAddOpen(false) }
+    if (error) { console.error('[Levbe] addTask failed:', error.message); return }
+    if (data) { setTasks(p => [data as Task, ...p]); setNewTitle(''); setAddOpen(false) }
   }
 
   async function moveTask(id: string, toStatus: TaskStatus) {
